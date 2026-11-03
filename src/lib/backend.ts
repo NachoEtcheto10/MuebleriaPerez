@@ -1,13 +1,14 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createAuthClient } from '@neon/auth'
+import { neon } from '@neondatabase/serverless'
 import { DEFAULT_SETTINGS, type Product, type StoreSettings } from './types'
 
 /**
- * Capa de datos de la tienda.
- * - Con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY: productos, configuración, fotos y login en Supabase.
- * - Sin ellas: "modo demo". Usa el catálogo del Excel y guarda los cambios solo en este navegador.
+ * Capa de datos de la tienda conectada a Neon (Lakebase Postgres + Managed Better Auth).
+ * - Con VITE_DATABASE_URL y VITE_NEON_AUTH_URL: productos, configuración, fotos y login real en Neon.
+ * - Sin ellas: "modo demo" local en el navegador.
  */
 export interface Backend {
-  mode: 'supabase' | 'demo'
+  mode: 'neon' | 'demo'
   loadProducts(): Promise<Product[]>
   loadSettings(): Promise<StoreSettings>
   saveProduct(p: Product): Promise<void>
@@ -25,9 +26,13 @@ export function mergeSettings(data: Partial<StoreSettings> | null | undefined): 
     ...DEFAULT_SETTINGS,
     ...(data || {}),
     plans: data?.plans?.length ? data.plans : DEFAULT_SETTINGS.plans,
-    // Si todavía no se cargó la dirección en Administración, se usa la del local
     address: data?.address || DEFAULT_SETTINGS.address,
     city: data?.address ? data.city || '' : DEFAULT_SETTINGS.city,
+    hours: data?.hours || DEFAULT_SETTINGS.hours,
+    instagram: data?.instagram || DEFAULT_SETTINGS.instagram,
+    facebook: data?.facebook || DEFAULT_SETTINGS.facebook,
+    whatsapp: data?.whatsapp || DEFAULT_SETTINGS.whatsapp,
+    email: data?.email || DEFAULT_SETTINGS.email,
   }
 }
 
@@ -37,7 +42,7 @@ const PRODUCT_DEFAULTS: Omit<Product, 'id'> = {
   available: true, featured: false, images: [], sort: 0,
 }
 
-function normalizeProduct(p: Partial<Product> & { id: string }): Product {
+export function normalizeProduct(p: Partial<Product> & { id: string }): Product {
   return {
     ...PRODUCT_DEFAULTS,
     ...p,
@@ -48,71 +53,179 @@ function normalizeProduct(p: Partial<Product> & { id: string }): Product {
   }
 }
 
-// ------------------------------------------------------------------ Supabase
+export async function loadSeedProducts(): Promise<Product[]> {
+  const raw = (await import('../data/seed.json')).default as Product[]
+  return raw.map(normalizeProduct)
+}
 
-function supabaseBackend(client: SupabaseClient): Backend {
-  const BUCKET = 'productos'
+function blobToDataUrl(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result as string)
+    r.onerror = reject
+    r.readAsDataURL(file)
+  })
+}
+
+// ------------------------------------------------------------------ Neon (Lakebase Postgres + Managed Better Auth)
+
+const NEON_TOKEN_KEY = 'perez-neon-session-token'
+
+function neonBackend(dbUrl: string, authUrl: string): Backend {
+  const sql = neon(dbUrl)
+  const authClient = createAuthClient(authUrl)
+
   return {
-    mode: 'supabase',
+    mode: 'neon',
     async loadProducts() {
-      const all: Product[] = []
-      // Supabase devuelve hasta 1000 filas por consulta
-      for (let from = 0; ; from += 1000) {
-        const { data, error } = await client.from('products').select('*').order('sort').range(from, from + 999)
-        if (error) throw error
-        all.push(...(data as Product[]).map(normalizeProduct))
-        if (!data || data.length < 1000) break
-      }
-      return all
+      const rows = await sql`SELECT * FROM public.products ORDER BY sort ASC, name ASC`
+      return (rows as (Partial<Product> & { id: string })[]).map(normalizeProduct)
     },
     async loadSettings() {
-      const { data, error } = await client.from('settings').select('data').eq('id', 1).maybeSingle()
-      if (error) throw error
-      return mergeSettings(data?.data)
+      const rows = await sql`SELECT data FROM public.settings WHERE id = 1 LIMIT 1`
+      return mergeSettings(rows[0]?.data as Partial<StoreSettings> | undefined)
     },
     async saveProduct(p) {
-      const { error } = await client.from('products').upsert({ ...p, updated_at: new Date().toISOString() })
-      if (error) throw error
+      await sql`
+        INSERT INTO public.products (
+          id, code, name, description, category, subcategory, brand, size, measure,
+          material, kind, model, colors, price_list, discount_pct, available, featured, images, sort, updated_at
+        ) VALUES (
+          ${p.id}, ${p.code}, ${p.name}, ${p.description}, ${p.category},
+          ${p.subcategory}, ${p.brand}, ${p.size}, ${p.measure},
+          ${p.material}, ${p.kind}, ${p.model}, ${p.colors},
+          ${p.price_list}, ${p.discount_pct}, ${p.available},
+          ${p.featured}, ${p.images}, ${p.sort}, now()
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          code = EXCLUDED.code,
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          category = EXCLUDED.category,
+          subcategory = EXCLUDED.subcategory,
+          brand = EXCLUDED.brand,
+          size = EXCLUDED.size,
+          measure = EXCLUDED.measure,
+          material = EXCLUDED.material,
+          kind = EXCLUDED.kind,
+          model = EXCLUDED.model,
+          colors = EXCLUDED.colors,
+          price_list = EXCLUDED.price_list,
+          discount_pct = EXCLUDED.discount_pct,
+          available = EXCLUDED.available,
+          featured = EXCLUDED.featured,
+          images = EXCLUDED.images,
+          sort = EXCLUDED.sort,
+          updated_at = now()
+      `
     },
     async saveProducts(list) {
-      for (let i = 0; i < list.length; i += 200) {
-        const { error } = await client
-          .from('products')
-          .upsert(list.slice(i, i + 200).map((p) => ({ ...p, updated_at: new Date().toISOString() })))
-        if (error) throw error
+      const chunkSize = 25
+      for (let i = 0; i < list.length; i += chunkSize) {
+        const chunk = list.slice(i, i + chunkSize)
+        await Promise.all(
+          chunk.map((p) => this.saveProduct(p))
+        )
       }
     },
     async deleteProduct(id) {
-      const { error } = await client.from('products').delete().eq('id', id)
-      if (error) throw error
+      await sql`DELETE FROM public.products WHERE id = ${id}`
     },
     async saveSettings(s) {
-      const { error } = await client.from('settings').upsert({ id: 1, data: s })
-      if (error) throw error
+      await sql`
+        INSERT INTO public.settings (id, data)
+        VALUES (1, ${JSON.stringify(s)}::jsonb)
+        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
+      `
     },
-    async uploadImage(file, name) {
-      const path = `${Date.now()}-${name}`
-      const { error } = await client.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false })
-      if (error) throw error
-      return client.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+    async uploadImage(file) {
+      // Las imágenes ya vienen comprimidas en WebP desde compressImage() y se persisten en Neon Postgres
+      return blobToDataUrl(file)
     },
     async signIn(email, password) {
-      const { error } = await client.auth.signInWithPassword({ email, password })
-      if (error) throw new Error('E-mail o contraseña incorrectos')
-      if (!(await this.isAdmin())) {
-        await client.auth.signOut()
+      let res: { data?: { user?: { id: string }; token?: string } | null; error?: { message?: string } | null }
+      try {
+        res = await authClient.signIn.email({ email, password })
+      } catch {
+        throw new Error('E-mail o contraseña incorrectos')
+      }
+      if (res.error || !res.data?.user?.id) {
+        throw new Error('E-mail o contraseña incorrectos')
+      }
+      const uid = res.data.user.id
+      const admins = await sql`SELECT user_id FROM public.admins WHERE user_id = ${uid} LIMIT 1`
+      if (!admins.length) {
+        await this.signOut()
         throw new Error('Este usuario no tiene permisos de administrador')
+      }
+      if (res.data.token) {
+        try {
+          localStorage.setItem(NEON_TOKEN_KEY, res.data.token)
+        } catch {
+          // ignore storage errors
+        }
       }
     },
     async signOut() {
-      await client.auth.signOut()
+      const token = (() => {
+        try {
+          return localStorage.getItem(NEON_TOKEN_KEY)
+        } catch {
+          return null
+        }
+      })()
+      try {
+        await authClient.signOut()
+      } catch {
+        // ignore network/cookie errors on signOut
+      }
+      if (token) {
+        try {
+          await sql`DELETE FROM neon_auth.session WHERE token = ${token}`
+        } catch {
+          // ignore
+        }
+      }
+      try {
+        localStorage.removeItem(NEON_TOKEN_KEY)
+      } catch {
+        // ignore
+      }
     },
     async isAdmin() {
-      const { data: session } = await client.auth.getSession()
-      const uid = session.session?.user.id
-      if (!uid) return false
-      const { data } = await client.from('admins').select('user_id').eq('user_id', uid).maybeSingle()
-      return !!data
+      // 1. Intentar obtener sesión desde Neon Auth client
+      try {
+        const { data } = await authClient.getSession()
+        const uid = data?.user?.id
+        if (uid) {
+          const admins = await sql`SELECT user_id FROM public.admins WHERE user_id = ${uid} LIMIT 1`
+          if (admins.length > 0) return true
+        }
+      } catch {
+        // fallback al token persistido si el navegador bloquea cookies cross-origin
+      }
+
+      // 2. Fallback: verificar token de sesión de Better Auth en neon_auth.session
+      let token: string | null = null
+      try {
+        token = localStorage.getItem(NEON_TOKEN_KEY)
+      } catch {
+        return false
+      }
+      if (!token) return false
+
+      try {
+        const valid = await sql`
+          SELECT a.user_id
+          FROM neon_auth.session s
+          JOIN public.admins a ON a.user_id = s."userId"::text
+          WHERE s.token = ${token} AND s."expiresAt" > now()
+          LIMIT 1
+        `
+        return valid.length > 0
+      } catch {
+        return false
+      }
     },
   }
 }
@@ -141,19 +254,8 @@ function writeLS(key: string, value: unknown) {
   }
 }
 
-function blobToDataUrl(file: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = () => resolve(r.result as string)
-    r.onerror = reject
-    r.readAsDataURL(file)
-  })
-}
-
 function demoBackend(): Backend {
-  // El catálogo de prueba se descarga solo en modo demo
-  const load = async () =>
-    readLS<Product[]>(LS_PRODUCTS) || ((await import('../data/seed.json')).default as Product[]).map(normalizeProduct)
+  const load = async () => readLS<Product[]>(LS_PRODUCTS) || loadSeedProducts()
   return {
     mode: 'demo',
     async loadProducts() {
@@ -195,7 +297,15 @@ function demoBackend(): Backend {
   }
 }
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const rawDbUrl = import.meta.env.VITE_DATABASE_URL as string | undefined
+const cleanDbUrl = rawDbUrl ? rawDbUrl.replace(/[?&]channel_binding=[^&]+/g, '') : undefined
+const authUrl = import.meta.env.VITE_NEON_AUTH_URL as string | undefined
 
-export const backend: Backend = url && key ? supabaseBackend(createClient(url, key)) : demoBackend()
+const isValidNeonConfig =
+  !!cleanDbUrl &&
+  !!authUrl &&
+  cleanDbUrl.startsWith('postgresql://') &&
+  !cleanDbUrl.includes('ep-xxxx') &&
+  authUrl.startsWith('https://')
+
+export const backend: Backend = isValidNeonConfig ? neonBackend(cleanDbUrl, authUrl) : demoBackend()

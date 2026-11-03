@@ -6,3 +6,4 @@ _src
 *.log
 .DS_Store
 *.tsbuildinfo
+.neon

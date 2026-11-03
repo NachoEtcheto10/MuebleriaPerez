@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from '../../components/Icon'
 import { ProductImage } from '../../components/ProductImage'
-import { backend } from '../../lib/backend'
+import { backend, loadSeedProducts } from '../../lib/backend'
 import { CATEGORIES, categoryLabel } from '../../lib/catalog'
 import { formatPrice } from '../../lib/format'
 import { searchProducts } from '../../lib/search'
@@ -78,6 +78,7 @@ export function ProductsAdmin() {
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('')
   const [status, setStatus] = useState('')
+  const [seeding, setSeeding] = useState(false)
 
   const list = useMemo(() => {
     let l = q.trim() ? searchProducts(products, q) : products
@@ -111,6 +112,21 @@ export function ProductsAdmin() {
     }
   }
 
+  const handleSeedInitialCatalog = async () => {
+    if (!confirm('¿Cargar los 297 productos iniciales de la planilla en la base de datos?')) return
+    setSeeding(true)
+    try {
+      const seed = await loadSeedProducts()
+      await backend.saveProducts(seed)
+      setProducts(seed)
+      toast(`Se cargaron ${seed.length} productos en la base de datos`)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'No se pudo cargar el catálogo inicial', 'error')
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -118,9 +134,21 @@ export function ProductsAdmin() {
           <h1 className="font-display text-2xl font-bold">Productos</h1>
           <p className="text-sm text-piedra-500">{products.length} en total · {products.filter((p) => !p.available).length} no disponibles</p>
         </div>
-        <Link to="/admin/productos/nuevo" className="flex items-center gap-2 rounded-xl bg-piedra-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-piedra-900">
-          <Icon name="plus" size={18} /> Nuevo producto
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {products.length === 0 && (
+            <button
+              type="button"
+              onClick={handleSeedInitialCatalog}
+              disabled={seeding}
+              className="flex items-center gap-2 rounded-xl border border-madera-500 bg-madera-50 px-4 py-2.5 text-sm font-semibold text-madera-700 hover:bg-madera-100 disabled:opacity-50"
+            >
+              {seeding ? 'Cargando 297 productos…' : 'Cargar catálogo inicial (297 productos)'}
+            </button>
+          )}
+          <Link to="/admin/productos/nuevo" className="flex items-center gap-2 rounded-xl bg-piedra-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-piedra-900">
+            <Icon name="plus" size={18} /> Nuevo producto
+          </Link>
+        </div>
       </div>
 
       <BulkPrices products={products} />

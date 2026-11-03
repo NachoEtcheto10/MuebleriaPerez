@@ -34,7 +34,7 @@ function ToastHost({ children }: { children: ReactNode }) {
 // ------------------------------------------------------------------ login
 
 function Login({ onLogin }: { onLogin(): void }) {
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState('perezmueblesycolchones@gmail.com')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -78,7 +78,7 @@ function Login({ onLogin }: { onLogin(): void }) {
         </button>
         {demo && (
           <p className="mt-4 rounded-xl bg-madera-50 p-3 text-xs text-madera-700">
-            Modo demo (sin Supabase): la contraseña es <strong>{DEMO_PASSWORD}</strong> y los cambios se guardan solo en este navegador.
+            Modo demo (sin Neon): la contraseña es <strong>{DEMO_PASSWORD}</strong> y los cambios se guardan solo en este navegador.
           </p>
         )}
         <Link to="/" className="mt-4 block text-center text-sm text-piedra-500 hover:text-piedra-800">Volver a la tienda</Link>
@@ -140,7 +140,7 @@ export function AdminApp() {
 
         {backend.mode === 'demo' && (
           <div className="bg-madera-50 px-4 py-2 text-center text-xs font-medium text-madera-700">
-            Modo demo: los cambios se guardan solo en este navegador. Conectá Supabase para que los vean todos los clientes.
+            Modo demo: los cambios se guardan solo en este navegador. Conectá Neon para que los vean todos los clientes.
           </div>
         )}
 
