@@ -67,8 +67,8 @@ export function ProductCarousel({ products, autoplay = 0 }: Props) {
       <div ref={track} onScroll={update}
         className="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-3 pt-1 scroll-px-4">
         {products.map((p) => (
-          // Ancho fijo por pantalla + "flex" para que todas las tarjetas queden del mismo alto
-          <div key={p.id} className="flex w-[46%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
+          // En mobile w-[70%] da amplitud adecuada a la tarjeta y permite ver un anticipo del siguiente producto
+          <div key={p.id} className="flex w-[70%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
             <ProductCard product={p} />
           </div>
         ))}

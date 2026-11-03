@@ -36,6 +36,7 @@ export function ContactPage() {
   }, [])
 
   const location = [settings.address, settings.city].filter(Boolean).join(', ')
+  const storeMapQuery = `Pérez Muebles y Colchones, ${location || 'Bv. J. Sansoni 1932, Concepción del Uruguay, Entre Ríos'}`
   const canSend = !!(settings.whatsapp || settings.email)
 
   const send = (e: FormEvent) => {
@@ -72,7 +73,7 @@ export function ContactPage() {
             <InfoCard icon="mail" title="E-mail" href={`mailto:${settings.email}`}>{settings.email}</InfoCard>
           )}
           {location && (
-            <InfoCard icon="pin" title="Dirección" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}>
+            <InfoCard icon="pin" title="Dirección" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(storeMapQuery)}`}>
               {location}
             </InfoCard>
           )}
@@ -101,9 +102,13 @@ export function ContactPage() {
 
           {location && (
             <div className="overflow-hidden rounded-2xl border border-piedra-200 bg-piedra-100">
-              <iframe title="Ubicación del local" loading="lazy" referrerPolicy="no-referrer-when-downgrade"
-                src={`https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`}
-                className="block h-64 w-full border-0 sm:h-72" />
+              <iframe
+                title="Ubicación de la mueblería"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://www.google.com/maps?q=${encodeURIComponent(storeMapQuery)}&t=&z=17&ie=UTF8&iwloc=&output=embed`}
+                className="block h-64 w-full border-0 sm:h-72"
+              />
             </div>
           )}
         </div>

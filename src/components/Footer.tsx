@@ -1,87 +1,140 @@
 import { Link } from 'react-router-dom'
-import { CATEGORIES } from '../lib/catalog'
 import { useStore } from '../lib/store'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
 
 export function Footer() {
   const { settings } = useStore()
+  const location = [settings.address, settings.city].filter(Boolean).join(', ')
+  const mapQuery = `Pérez Muebles y Colchones, ${location || 'Bv. J. Sansoni 1932, Concepción del Uruguay, Entre Ríos'}`
+
   return (
-    <footer className="mt-20 bg-piedra-900 text-piedra-200">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <Logo light />
-          <p className="mt-4 max-w-xs text-sm text-piedra-300">
-            Muebles y colchones para cada ambiente de tu casa. Armá tu pedido online y coordinalo por WhatsApp.
-          </p>
-          <div className="mt-5 flex gap-2">
-            {settings.instagram && (
-              <a href={settings.instagram} target="_blank" rel="noopener" aria-label="Instagram"
-                className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 hover:bg-madera-600">
-                <Icon name="instagram" size={20} />
-              </a>
-            )}
-            {settings.facebook && (
-              <a href={settings.facebook} target="_blank" rel="noopener" aria-label="Facebook"
-                className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 hover:bg-madera-600">
-                <Icon name="facebook" size={20} />
-              </a>
-            )}
+    <footer className="mt-20 border-t border-piedra-800 bg-piedra-900 text-piedra-200">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
+        <div className="grid gap-10 md:grid-cols-2 md:gap-16">
+          {/* Marca, descripción y redes */}
+          <div className="flex flex-col items-center text-center md:items-start md:text-left">
+            <Logo light />
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-piedra-300">
+              Muebles y colchones para cada ambiente de tu casa. Armá tu pedido online y coordiná el pago y envío directamente por WhatsApp.
+            </p>
+
+            {/* Redes sociales */}
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+              {settings.instagram && (
+                <a
+                  href={settings.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-madera-600 active:scale-95"
+                >
+                  <Icon name="instagram" size={18} />
+                  <span>Instagram</span>
+                </a>
+              )}
+              {settings.facebook && (
+                <a
+                  href={settings.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-madera-600 active:scale-95"
+                >
+                  <Icon name="facebook" size={18} />
+                  <span>Facebook</span>
+                </a>
+              )}
+              {settings.whatsapp && (
+                <a
+                  href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600/20 px-4 py-2.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-600 hover:text-white active:scale-95"
+                >
+                  <Icon name="whatsapp" size={18} />
+                  <span>WhatsApp</span>
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Contacto y datos del local */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-7">
+            <h3 className="font-display text-sm font-bold uppercase tracking-wider text-madera-300">
+              Atención &amp; Ubicación
+            </h3>
+            <ul className="mt-4 space-y-3.5 text-sm">
+              {location && (
+                <li className="flex items-start gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/10 text-madera-300">
+                    <Icon name="pin" size={18} />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="block text-xs uppercase tracking-wider text-piedra-400">Dirección</span>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapQuery)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-white hover:text-madera-300"
+                    >
+                      {location}
+                    </a>
+                  </div>
+                </li>
+              )}
+              {settings.hours && (
+                <li className="flex items-start gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/10 text-madera-300">
+                    <Icon name="clock" size={18} />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="block text-xs uppercase tracking-wider text-piedra-400">Horarios</span>
+                    <span className="font-medium text-piedra-200">{settings.hours}</span>
+                  </div>
+                </li>
+              )}
+              {settings.whatsapp && (
+                <li className="flex items-start gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/10 text-madera-300">
+                    <Icon name="whatsapp" size={18} />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="block text-xs uppercase tracking-wider text-piedra-400">WhatsApp</span>
+                    <a
+                      href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-white hover:text-madera-300"
+                    >
+                      +{settings.whatsapp.replace(/\D/g, '')}
+                    </a>
+                  </div>
+                </li>
+              )}
+              {settings.email && (
+                <li className="flex items-start gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/10 text-madera-300">
+                    <Icon name="mail" size={18} />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="block text-xs uppercase tracking-wider text-piedra-400">E-mail</span>
+                    <a href={`mailto:${settings.email}`} className="break-all font-medium text-piedra-200 hover:text-white">
+                      {settings.email}
+                    </a>
+                  </div>
+                </li>
+              )}
+            </ul>
           </div>
         </div>
-
-        <div>
-          <h3 className="font-display text-sm font-bold uppercase tracking-wider text-white">Categorías</h3>
-          <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            {CATEGORIES.map((c) => (
-              <li key={c.slug}>
-                <Link to={`/categoria/${c.slug}`} className="hover:text-white">{c.name}</Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="font-display text-sm font-bold uppercase tracking-wider text-white">Formas de pago</h3>
-          <ul className="mt-4 space-y-2 text-sm">
-            <li>Efectivo o transferencia: {settings.cashDiscountPct}% OFF</li>
-            {settings.plans.filter((p) => p.enabled).map((p) => (
-              <li key={p.id}>{p.name}: {p.installments.map((i) => i.n).sort((a, b) => a - b).join(', ')} cuotas</li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="font-display text-sm font-bold uppercase tracking-wider text-white">Contacto</h3>
-          <ul className="mt-4 space-y-3 text-sm">
-            {(settings.address || settings.city) && (
-              <li className="flex gap-2"><Icon name="pin" size={18} className="mt-0.5 shrink-0 text-madera-300" />{[settings.address, settings.city].filter(Boolean).join(', ')}</li>
-            )}
-            {settings.hours && (
-              <li className="flex gap-2"><Icon name="clock" size={18} className="mt-0.5 shrink-0 text-madera-300" />{settings.hours}</li>
-            )}
-            {settings.whatsapp && (
-              <li className="flex gap-2"><Icon name="whatsapp" size={18} className="mt-0.5 shrink-0 text-madera-300" />
-                <a href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener" className="hover:text-white">{settings.whatsapp}</a>
-              </li>
-            )}
-            {settings.email && (
-              <li className="flex gap-2"><Icon name="mail" size={18} className="mt-0.5 shrink-0 text-madera-300" />
-                <a href={`mailto:${settings.email}`} className="break-all hover:text-white">{settings.email}</a>
-              </li>
-            )}
-            <li>
-              <Link to="/contacto" className="inline-flex items-center gap-1 font-semibold text-white hover:text-madera-300">
-                Ir a contacto <Icon name="arrowRight" size={15} />
-              </Link>
-            </li>
-          </ul>
-        </div>
       </div>
-      <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs text-piedra-400 sm:flex-row">
-          <span>© {new Date().getFullYear()} Pérez Muebles &amp; Colchones</span>
-          <Link to="/admin" className="hover:text-piedra-200">Administración</Link>
+
+      {/* Barra inferior */}
+      <div className="border-t border-white/10 bg-black/20">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-center text-xs text-piedra-400 sm:flex-row sm:text-left">
+          <span>© {new Date().getFullYear()} Pérez Muebles &amp; Colchones. Todos los derechos reservados.</span>
+          <Link to="/admin" className="font-medium hover:text-piedra-200">
+            Panel de administración
+          </Link>
         </div>
       </div>
     </footer>
