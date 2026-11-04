@@ -1,11 +1,13 @@
 import { neon } from '@neondatabase/serverless'
 import fs from 'node:fs'
 
-const rawUrl = process.env.DATABASE_URL || process.env.VITE_DATABASE_URL || ''
+// Uso: npm run setup-neon  (lee DATABASE_URL, NEON_AUTH_BASE_URL y ADMIN_PASSWORD de .env.local)
+const rawUrl = process.env.DATABASE_URL || ''
 const DATABASE_URL = rawUrl.replace(/[?&]channel_binding=[^&]+/g, '')
 const AUTH_URL = process.env.NEON_AUTH_BASE_URL || process.env.VITE_NEON_AUTH_URL
 const ADMIN_EMAILS = ['perezmueblesycolchones@gmail.com', 'perezhermanos@gmail.com']
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'perezhermanos2026'
+// La contraseña de los admins NUNCA va escrita en el código: se pasa como variable de entorno
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ''
 
 if (!DATABASE_URL) {
   console.error('Missing DATABASE_URL environment variable')
@@ -55,6 +57,16 @@ async function main() {
     )
   `
 
+  console.log('   Table for product photos...')
+  await sql`
+    CREATE TABLE IF NOT EXISTS public.images (
+      id         text PRIMARY KEY,
+      mime       text NOT NULL,
+      data       bytea NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `
+
   if (AUTH_URL) {
     console.log('2. Registering Pérez Hermanos Admin users in Neon Auth...')
     for (const email of ADMIN_EMAILS) {
@@ -62,6 +74,9 @@ async function main() {
       let adminUserId = existingUsers[0]?.id
 
       if (!adminUserId) {
+        if (ADMIN_PASSWORD.length < 10) {
+          throw new Error('Para crear los usuarios admin definí ADMIN_PASSWORD (mínimo 10 caracteres) en .env.local')
+        }
         const res = await fetch(`${AUTH_URL}/sign-up/email`, {
           method: 'POST',
           headers: {

@@ -1,10 +1,9 @@
 import { createAuthClient } from '@neon/auth'
-import { neon } from '@neondatabase/serverless'
 import { DEFAULT_SETTINGS, type Product, type StoreSettings } from './types'
 
 /**
- * Capa de datos de la tienda conectada a Neon (Lakebase Postgres + Managed Better Auth).
- * - Con VITE_DATABASE_URL y VITE_NEON_AUTH_URL: productos, configuración, fotos y login real en Neon.
+ * Capa de datos de la tienda conectada a Neon (Postgres + Neon Auth) a través de las funciones de /api.
+ * - Con VITE_NEON_AUTH_URL (y DATABASE_URL en el servidor): productos, configuración, fotos y login real en Neon.
  * - Sin ellas: "modo demo" local en el navegador.
  */
 export interface Backend {
@@ -67,80 +66,90 @@ function blobToDataUrl(file: Blob): Promise<string> {
   })
 }
 
-// ------------------------------------------------------------------ Neon (Lakebase Postgres + Managed Better Auth)
+// ------------------------------------------------------------------ Neon (a través del servidor)
+//
+// El navegador NO se conecta a la base de datos: le pide todo a las funciones de /api,
+// que son las únicas que conocen DATABASE_URL. El login es con Neon Auth y el token
+// de la sesión se manda al servidor, que verifica que sea de un admin antes de guardar.
 
 const NEON_TOKEN_KEY = 'perez-neon-session-token'
 
-function neonBackend(dbUrl: string, authUrl: string): Backend {
-  const sql = neon(dbUrl)
+function readToken() {
+  try {
+    return localStorage.getItem(NEON_TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(NEON_TOKEN_KEY, token)
+    else localStorage.removeItem(NEON_TOKEN_KEY)
+  } catch {
+    // sin almacenamiento: la sesión dura mientras la pestaña esté abierta
+  }
+}
+
+async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = readToken()
+  const headers = new Headers(init.headers)
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  let res: Response
+  try {
+    res = await fetch(path, { ...init, headers })
+  } catch {
+    throw new Error('No hay conexión con el servidor. Revisá tu internet y probá de nuevo.')
+  }
+  const data = (await res.json().catch(() => ({}))) as T & { error?: string }
+  if (!res.ok) throw new Error(data.error || `Error del servidor (${res.status})`)
+  return data
+}
+
+const adminAction = <T = { ok: boolean }>(action: string, payload: Record<string, unknown> = {}) =>
+  api<T>('/api/admin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...payload }),
+  })
+
+function neonBackend(authUrl: string): Backend {
   const authClient = createAuthClient(authUrl)
+  let catalog: Promise<{ products: (Partial<Product> & { id: string })[]; settings: Partial<StoreSettings> | null }> | null = null
+  // Productos y configuración llegan en un solo pedido
+  const loadCatalog = () => {
+    catalog ??= api<{ products: (Partial<Product> & { id: string })[]; settings: Partial<StoreSettings> | null }>('/api/catalog')
+      .finally(() => setTimeout(() => { catalog = null }, 0))
+    return catalog
+  }
 
   return {
     mode: 'neon',
     async loadProducts() {
-      const rows = await sql`SELECT * FROM public.products ORDER BY sort ASC, name ASC`
-      return (rows as (Partial<Product> & { id: string })[]).map(normalizeProduct)
+      return (await loadCatalog()).products.map(normalizeProduct)
     },
     async loadSettings() {
-      const rows = await sql`SELECT data FROM public.settings WHERE id = 1 LIMIT 1`
-      return mergeSettings(rows[0]?.data as Partial<StoreSettings> | undefined)
+      return mergeSettings((await loadCatalog()).settings)
     },
-    async saveProduct(p) {
-      await sql`
-        INSERT INTO public.products (
-          id, code, name, description, category, subcategory, brand, size, measure,
-          material, kind, model, colors, price_list, discount_pct, available, featured, images, sort, updated_at
-        ) VALUES (
-          ${p.id}, ${p.code}, ${p.name}, ${p.description}, ${p.category},
-          ${p.subcategory}, ${p.brand}, ${p.size}, ${p.measure},
-          ${p.material}, ${p.kind}, ${p.model}, ${p.colors},
-          ${p.price_list}, ${p.discount_pct}, ${p.available},
-          ${p.featured}, ${p.images}, ${p.sort}, now()
-        )
-        ON CONFLICT (id) DO UPDATE SET
-          code = EXCLUDED.code,
-          name = EXCLUDED.name,
-          description = EXCLUDED.description,
-          category = EXCLUDED.category,
-          subcategory = EXCLUDED.subcategory,
-          brand = EXCLUDED.brand,
-          size = EXCLUDED.size,
-          measure = EXCLUDED.measure,
-          material = EXCLUDED.material,
-          kind = EXCLUDED.kind,
-          model = EXCLUDED.model,
-          colors = EXCLUDED.colors,
-          price_list = EXCLUDED.price_list,
-          discount_pct = EXCLUDED.discount_pct,
-          available = EXCLUDED.available,
-          featured = EXCLUDED.featured,
-          images = EXCLUDED.images,
-          sort = EXCLUDED.sort,
-          updated_at = now()
-      `
+    async saveProduct(product) {
+      await adminAction('saveProduct', { product })
     },
-    async saveProducts(list) {
-      const chunkSize = 25
-      for (let i = 0; i < list.length; i += chunkSize) {
-        const chunk = list.slice(i, i + chunkSize)
-        await Promise.all(
-          chunk.map((p) => this.saveProduct(p))
-        )
-      }
+    async saveProducts(products) {
+      await adminAction('saveProducts', { products })
     },
     async deleteProduct(id) {
-      await sql`DELETE FROM public.products WHERE id = ${id}`
+      await adminAction('deleteProduct', { id })
     },
-    async saveSettings(s) {
-      await sql`
-        INSERT INTO public.settings (id, data)
-        VALUES (1, ${JSON.stringify(s)}::jsonb)
-        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-      `
+    async saveSettings(settings) {
+      await adminAction('saveSettings', { settings })
     },
     async uploadImage(file) {
-      // Las imágenes ya vienen comprimidas en WebP desde compressImage() y se persisten en Neon Postgres
-      return blobToDataUrl(file)
+      const { url } = await api<{ url: string }>('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': file.type || 'image/webp' },
+        body: file,
+      })
+      return url
     },
     async signIn(email, password) {
       let res: { data?: { user?: { id: string }; token?: string } | null; error?: { message?: string } | null }
@@ -149,80 +158,33 @@ function neonBackend(dbUrl: string, authUrl: string): Backend {
       } catch {
         throw new Error('E-mail o contraseña incorrectos')
       }
-      if (res.error || !res.data?.user?.id) {
+      if (res.error || !res.data?.user?.id || !res.data.token) {
         throw new Error('E-mail o contraseña incorrectos')
       }
-      const uid = res.data.user.id
-      const admins = await sql`SELECT user_id FROM public.admins WHERE user_id = ${uid} LIMIT 1`
-      if (!admins.length) {
+      writeToken(res.data.token)
+      const { admin } = await adminAction<{ admin: boolean }>('me')
+      if (!admin) {
         await this.signOut()
         throw new Error('Este usuario no tiene permisos de administrador')
       }
-      if (res.data.token) {
-        try {
-          localStorage.setItem(NEON_TOKEN_KEY, res.data.token)
-        } catch {
-          // ignore storage errors
-        }
-      }
     },
     async signOut() {
-      const token = (() => {
-        try {
-          return localStorage.getItem(NEON_TOKEN_KEY)
-        } catch {
-          return null
-        }
-      })()
+      try {
+        await adminAction('logout')
+      } catch {
+        // si falla, igual se borra la sesión local
+      }
       try {
         await authClient.signOut()
       } catch {
-        // ignore network/cookie errors on signOut
+        // ignorar errores de red o cookies
       }
-      if (token) {
-        try {
-          await sql`DELETE FROM neon_auth.session WHERE token = ${token}`
-        } catch {
-          // ignore
-        }
-      }
-      try {
-        localStorage.removeItem(NEON_TOKEN_KEY)
-      } catch {
-        // ignore
-      }
+      writeToken(null)
     },
     async isAdmin() {
-      // 1. Intentar obtener sesión desde Neon Auth client
+      if (!readToken()) return false
       try {
-        const { data } = await authClient.getSession()
-        const uid = data?.user?.id
-        if (uid) {
-          const admins = await sql`SELECT user_id FROM public.admins WHERE user_id = ${uid} LIMIT 1`
-          if (admins.length > 0) return true
-        }
-      } catch {
-        // fallback al token persistido si el navegador bloquea cookies cross-origin
-      }
-
-      // 2. Fallback: verificar token de sesión de Better Auth en neon_auth.session
-      let token: string | null = null
-      try {
-        token = localStorage.getItem(NEON_TOKEN_KEY)
-      } catch {
-        return false
-      }
-      if (!token) return false
-
-      try {
-        const valid = await sql`
-          SELECT a.user_id
-          FROM neon_auth.session s
-          JOIN public.admins a ON a.user_id = s."userId"::text
-          WHERE s.token = ${token} AND s."expiresAt" > now()
-          LIMIT 1
-        `
-        return valid.length > 0
+        return (await adminAction<{ admin: boolean }>('me')).admin
       } catch {
         return false
       }
@@ -297,15 +259,9 @@ function demoBackend(): Backend {
   }
 }
 
-const rawDbUrl = import.meta.env.VITE_DATABASE_URL as string | undefined
-const cleanDbUrl = rawDbUrl ? rawDbUrl.replace(/[?&]channel_binding=[^&]+/g, '') : undefined
+// La URL de Neon Auth es pública (no es una contraseña). Si está configurada, la tienda usa el servidor (/api);
+// si no, funciona en "modo demo" con el catálogo del Excel guardado en el navegador.
 const authUrl = import.meta.env.VITE_NEON_AUTH_URL as string | undefined
+const hasNeon = !!authUrl && authUrl.startsWith('https://') && !authUrl.includes('ep-xxxx')
 
-const isValidNeonConfig =
-  !!cleanDbUrl &&
-  !!authUrl &&
-  cleanDbUrl.startsWith('postgresql://') &&
-  !cleanDbUrl.includes('ep-xxxx') &&
-  authUrl.startsWith('https://')
-
-export const backend: Backend = isValidNeonConfig ? neonBackend(cleanDbUrl, authUrl) : demoBackend()
+export const backend: Backend = hasNeon ? neonBackend(authUrl) : demoBackend()
