@@ -12,11 +12,11 @@ const num = (v: string) => Number(v.replace(',', '.'))
 export function FinancingSettings() {
   const { settings, setSettings } = useStore()
   const toast = useToast()
-  const [draft, setDraft] = useState<StoreSettings>(settings)
+  const [draft, setDraft] = useState<StoreSettings>(() => ({ ...settings, plans: settings.plans.filter((p) => p.id !== 'credito-personal') }))
   const [example, setExample] = useState(100000)
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => setDraft(settings), [settings])
+  useEffect(() => setDraft({ ...settings, plans: settings.plans.filter((p) => p.id !== 'credito-personal') }), [settings])
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings)
 

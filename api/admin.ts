@@ -40,6 +40,10 @@ function cleanProduct(p: unknown) {
     featured: r.featured === true,
     images: strList(r.images),
     sort: Math.trunc(num(r.sort)),
+    hidden: r.hidden === true,
+    youtube_url: strOrNull(r.youtube_url),
+    offer: strOrNull(r.offer),
+    offer_label: strOrNull(r.offer_label),
   }
 }
 
@@ -47,13 +51,15 @@ async function upsertProduct(p: ReturnType<typeof cleanProduct>) {
   await db()`
     INSERT INTO public.products (
       id, code, name, description, category, subcategory, brand, size, measure,
-      material, kind, model, colors, price_list, discount_pct, available, featured, images, sort, updated_at
+      material, kind, model, colors, price_list, discount_pct, available, featured, images, sort,
+      hidden, youtube_url, offer, offer_label, updated_at
     ) VALUES (
       ${p.id}, ${p.code}, ${p.name}, ${p.description}, ${p.category},
       ${p.subcategory}, ${p.brand}, ${p.size}, ${p.measure},
       ${p.material}, ${p.kind}, ${p.model}, ${p.colors},
       ${p.price_list}, ${p.discount_pct}, ${p.available},
-      ${p.featured}, ${p.images}, ${p.sort}, now()
+      ${p.featured}, ${p.images}, ${p.sort},
+      ${p.hidden}, ${p.youtube_url}, ${p.offer}, ${p.offer_label}, now()
     )
     ON CONFLICT (id) DO UPDATE SET
       code = EXCLUDED.code, name = EXCLUDED.name, description = EXCLUDED.description,
@@ -62,7 +68,8 @@ async function upsertProduct(p: ReturnType<typeof cleanProduct>) {
       kind = EXCLUDED.kind, model = EXCLUDED.model, colors = EXCLUDED.colors,
       price_list = EXCLUDED.price_list, discount_pct = EXCLUDED.discount_pct,
       available = EXCLUDED.available, featured = EXCLUDED.featured, images = EXCLUDED.images,
-      sort = EXCLUDED.sort, updated_at = now()
+      sort = EXCLUDED.sort, hidden = EXCLUDED.hidden, youtube_url = EXCLUDED.youtube_url,
+      offer = EXCLUDED.offer, offer_label = EXCLUDED.offer_label, updated_at = now()
   `
 }
 

@@ -39,10 +39,19 @@ async function main() {
       featured     boolean NOT NULL DEFAULT false,
       images       text[] NOT NULL DEFAULT '{}',
       sort         integer NOT NULL DEFAULT 0,
+      hidden       boolean NOT NULL DEFAULT false,
+      youtube_url  text,
+      offer        text,
+      offer_label  text,
       created_at   timestamptz NOT NULL DEFAULT now(),
       updated_at   timestamptz NOT NULL DEFAULT now()
     )
   `
+  await sql`ALTER TABLE public.products ADD COLUMN IF NOT EXISTS sort integer NOT NULL DEFAULT 0`
+  await sql`ALTER TABLE public.products ADD COLUMN IF NOT EXISTS hidden boolean NOT NULL DEFAULT false`
+  await sql`ALTER TABLE public.products ADD COLUMN IF NOT EXISTS youtube_url text`
+  await sql`ALTER TABLE public.products ADD COLUMN IF NOT EXISTS offer text`
+  await sql`ALTER TABLE public.products ADD COLUMN IF NOT EXISTS offer_label text`
   await sql`
     CREATE TABLE IF NOT EXISTS public.settings (
       id   integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),

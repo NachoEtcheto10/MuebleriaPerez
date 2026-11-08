@@ -7,13 +7,13 @@ import { formatPrice, slugify } from '../../lib/format'
 import { compressImage } from '../../lib/image'
 import { cashPrice, listPrice, quotePlan } from '../../lib/pricing'
 import { useStore } from '../../lib/store'
-import type { Product } from '../../lib/types'
+import { PROMO_OFFERS, type Product } from '../../lib/types'
 import { useToast } from './AdminApp'
 
 const EMPTY: Product = {
   id: '', code: '', name: '', description: '', category: 'habitacion', subcategory: null, brand: null, size: null,
   measure: null, material: null, kind: null, model: null, colors: [], price_list: null, discount_pct: 0,
-  available: true, featured: false, images: [], sort: 0,
+  available: true, featured: false, images: [], sort: 0, hidden: false, youtube_url: '',
 }
 
 const input = 'mt-1 w-full rounded-xl border border-piedra-200 bg-white px-3 py-2.5 text-[16px] outline-none focus:border-madera-500 focus:ring-4 focus:ring-madera-100 sm:text-sm'
@@ -237,7 +237,27 @@ export function ProductForm() {
                 <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" className={`${input} pl-7`} />
               </div>
             </Field>
-            <Field label="Descuento / oferta (%)" className="mt-4" hint="Opcional. Se muestra el precio anterior tachado.">
+            <Field label="Oferta / Promoción predeterminada" className="mt-4" hint="Seleccioná una promoción para mostrar la badge en la foto y destacar el producto">
+              <select
+                value={p.offer || ''}
+                onChange={(e) => {
+                  const chosen = PROMO_OFFERS.find((o) => o.id === e.target.value) || PROMO_OFFERS[0]
+                  setP((prev) => ({
+                    ...prev,
+                    offer: chosen.id,
+                    offer_label: chosen.badge,
+                    discount_pct: chosen.discountPct || prev.discount_pct,
+                  }))
+                }}
+                className={input}
+              >
+                {PROMO_OFFERS.map((o) => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Descuento / oferta personalizada (%)" className="mt-4" hint="Opcional. Se muestra el precio anterior tachado.">
               <input type="number" min={0} max={90} value={p.discount_pct || ''} onChange={(e) => set('discount_pct', Number(e.target.value) || 0)} className={input} />
             </Field>
 
@@ -260,7 +280,7 @@ export function ProductForm() {
             )}
           </Card>
 
-          <Card title="Estado">
+          <Card title="Estado y Visibilidad">
             <label className="flex cursor-pointer items-start gap-3 text-sm">
               <input type="checkbox" checked={p.available} onChange={(e) => set('available', e.target.checked)} className="mt-0.5 h-4 w-4 accent-piedra-800" />
               <span><span className="font-medium">Disponible</span><span className="block text-xs text-piedra-500">Si lo desmarcás, se muestra en gris como “No disponible” y no se puede agregar al pedido.</span></span>
@@ -269,6 +289,24 @@ export function ProductForm() {
               <input type="checkbox" checked={p.featured} onChange={(e) => set('featured', e.target.checked)} className="mt-0.5 h-4 w-4 accent-piedra-800" />
               <span><span className="font-medium">Destacado</span><span className="block text-xs text-piedra-500">Aparece en “Productos destacados” del inicio.</span></span>
             </label>
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-red-200 bg-red-50/70 p-3 text-sm">
+              <input type="checkbox" checked={Boolean(p.hidden)} onChange={(e) => set('hidden', e.target.checked)} className="mt-0.5 h-4 w-4 accent-red-700" />
+              <span>
+                <span className="font-semibold text-red-900">No mostrar en la tienda (Oculto)</span>
+                <span className="block text-xs text-red-700">El producto queda guardado solo acá en el panel admin (productos viejos o discontinuados), no aparece en absoluto para los clientes.</span>
+              </span>
+            </label>
+          </Card>
+
+          <Card title="Video de YouTube (opcional)">
+            <Field label="Enlace del video propio" hint="Opcional. Si este producto tiene un video propio o demostración en YouTube (ej. https://youtu.be/...). Si lo dejás vacío, usa el video general de la tienda.">
+              <input
+                value={p.youtube_url || ''}
+                onChange={(e) => set('youtube_url', e.target.value)}
+                placeholder="https://youtu.be/..."
+                className={input}
+              />
+            </Field>
           </Card>
         </div>
       </div>

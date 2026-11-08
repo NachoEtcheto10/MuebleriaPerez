@@ -5,6 +5,7 @@ import { FinancingTable } from '../components/Financing'
 import { Icon } from '../components/Icon'
 import { ProductCarousel } from '../components/ProductCarousel'
 import { ProductImage } from '../components/ProductImage'
+import { YouTubeEmbed } from '../components/YouTubeEmbed'
 import { SIZES, getCategory, getSubcategory } from '../lib/catalog'
 import { formatPrice, waLink } from '../lib/format'
 import { bestInterestFree, cashPrice, listPrice } from '../lib/pricing'
@@ -70,7 +71,7 @@ export function ProductPage() {
     setTimeout(() => setAdded(false), 2000)
   }
 
-  const askText = `¡Hola! Quería consultar por ${product.name} (cód. ${product.code})${color ? `, color ${color}` : ''}.`
+  const askText = `¡Hola! Quería consultar por ${product.name} (cód. ${product.code})${color ? `, en color ${color}` : ''}.`
 
   const specs = [
     product.measure && ['Medida', product.measure + ' cm'],
@@ -146,6 +147,12 @@ export function ProductPage() {
             {product.brand || subcategory?.name || category?.name}
           </p>
           <h1 className="mt-2 font-display text-2xl font-bold leading-tight sm:text-3xl">{product.name}</h1>
+          {product.offer_label && (
+            <div className="mt-2.5 inline-flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3.5 py-1.5 text-xs font-bold text-red-700 shadow-xs">
+              <span>🔥</span>
+              <span>Promoción activa: {product.offer_label}</span>
+            </div>
+          )}
           {!product.available && (
             <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-piedra-100 px-3 py-1 text-sm font-semibold text-piedra-600">
               <Icon name="info" size={16} /> Producto no disponible por el momento
@@ -192,15 +199,40 @@ export function ProductPage() {
 
           {product.colors.length > 0 && (
             <div className="mt-6">
-              <h2 className="text-sm font-semibold">Color{color ? `: ${color}` : ''}</h2>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {product.colors.map((c) => (
-                  <button key={c} type="button" onClick={() => setColor(c)} aria-pressed={color === c}
-                    className={`rounded-xl border px-4 py-2 text-sm font-medium ${color === c ? 'border-piedra-800 bg-piedra-800 text-white' : 'border-piedra-200 bg-white hover:border-piedra-500'}`}>
-                    {c}
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold">
+                  Elegí el color: <span className="font-bold text-madera-700">{color || 'Sin seleccionar'}</span>
+                </h2>
+                {color && (
+                  <button type="button" onClick={() => setColor(undefined)} className="text-xs font-medium text-piedra-500 hover:text-piedra-800">
+                    Deseleccionar
                   </button>
-                ))}
+                )}
               </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {product.colors.map((c) => {
+                  const active = color === c
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColor(active ? undefined : c)}
+                      aria-pressed={active}
+                      className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-semibold transition ${
+                        active
+                          ? 'border-piedra-900 bg-piedra-900 text-white shadow-sm ring-2 ring-piedra-900 ring-offset-1'
+                          : 'border-piedra-200 bg-white text-piedra-700 hover:border-piedra-400 hover:bg-piedra-50'
+                      }`}
+                    >
+                      {active && <Icon name="check" size={14} />}
+                      <span>{c}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mt-1.5 text-xs text-piedra-500">
+                Al seleccionar un color se incluye automáticamente en tu pedido o consulta de WhatsApp.
+              </p>
             </div>
           )}
 
@@ -244,6 +276,17 @@ export function ProductPage() {
           )}
         </div>
       </div>
+
+      {/* Video de YouTube de la tienda o del producto */}
+      {(product.youtube_url || settings.youtubeUrl) && (
+        <section className="mt-14">
+          <YouTubeEmbed
+            url={product.youtube_url || settings.youtubeUrl}
+            title={product.youtube_url ? `Conocé en video: ${product.name}` : 'Conocé nuestros productos en acción'}
+            subtitle={product.youtube_url ? 'Mirá los detalles, materiales y calidad de terminación.' : 'Mirá las novedades, armado y calidad en nuestro canal oficial.'}
+          />
+        </section>
+      )}
 
       {relatedList.length > 0 && (
         <section className="mt-16">

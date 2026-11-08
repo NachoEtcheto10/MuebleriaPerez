@@ -7,7 +7,7 @@ import { Icon } from './Icon'
 /** Planes de financiación de un precio: efectivo y cuotas por tarjeta/crédito */
 export function FinancingTable({ price }: { price: number }) {
   const { settings } = useStore()
-  const plans = settings.plans.filter((p) => p.enabled && p.installments.length)
+  const plans = settings.plans.filter((p) => p.enabled && p.id !== 'credito-personal' && p.installments.length)
   const [planId, setPlanId] = useState(plans[0]?.id)
   const plan = plans.find((p) => p.id === planId) || plans[0]
 
@@ -67,13 +67,13 @@ export function FinancingTable({ price }: { price: number }) {
 export function PlansSummary() {
   const { settings } = useStore()
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className="rounded-2xl bg-piedra-900 p-5 text-white">
         <Icon name="cash" size={26} className="text-madera-300" />
         <p className="mt-3 font-display text-3xl font-extrabold">{settings.cashDiscountPct}% OFF</p>
         <p className="mt-1 text-sm text-piedra-300">Pagando en efectivo o transferencia</p>
       </div>
-      {settings.plans.filter((p) => p.enabled).map((p) => (
+      {settings.plans.filter((p) => p.enabled && p.id !== 'credito-personal').map((p) => (
         <div key={p.id} className="rounded-2xl border border-piedra-200 bg-white p-5">
           <p className="font-display font-bold">{p.name}</p>
           <ul className="mt-3 space-y-1.5 text-sm">

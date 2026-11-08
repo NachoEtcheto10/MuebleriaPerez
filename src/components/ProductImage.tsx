@@ -33,9 +33,10 @@ export function ProductImage({ product, index = 0, className = '', badge = true 
           No disponible
         </span>
       )}
-      {badge && product.available && product.discount_pct > 0 && (
-        <span className="absolute left-3 top-3 rounded-full bg-madera-600 px-3 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-white">
-          {Math.round(product.discount_pct)}% OFF
+      {badge && product.available && (product.offer_label || product.discount_pct > 0) && (
+        <span className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-white shadow-md">
+          <span>🔥</span>
+          <span>{product.offer_label || `${Math.round(product.discount_pct)}% OFF`}</span>
         </span>
       )}
     </div>

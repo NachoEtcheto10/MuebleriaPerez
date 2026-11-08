@@ -29,8 +29,9 @@ export function orderMessage(lines: OrderLine[], option: PaymentOption, customer
   const out: string[] = ['¡Hola Pérez Muebles & Colchones! Quiero hacer este pedido:', '']
   for (const l of lines) {
     const parts = [`• ${l.item.qty} x ${l.product.name} (cód. ${l.product.code})`]
-    if (l.item.color) parts.push(`  Color: ${l.item.color}`)
-    else if (l.product.colors.length > 1) parts.push(`  Color: a confirmar (${l.product.colors.join(', ')})`)
+    if (l.item.color && l.product.colors.length > 1) {
+      parts.push(`  Color: ${l.item.color}`)
+    }
     parts.push(`  ${l.unit != null ? `${formatPrice(l.unit)} c/u (lista)` : 'Precio a consultar'}`)
     out.push(parts.join('\n'))
   }

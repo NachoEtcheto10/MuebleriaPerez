@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
+import { YouTubeEmbed } from '../../components/YouTubeEmbed'
 import { backend } from '../../lib/backend'
 import { CATEGORIES, categoryPhoto } from '../../lib/catalog'
 import { compressImage } from '../../lib/image'
@@ -16,6 +17,7 @@ const FIELDS: { key: keyof StoreSettings; label: string; hint?: string; long?: b
   { key: 'hours', label: 'Horarios', hint: 'Ej.: Lunes a viernes de 8 a 12 y de 16 a 20 hs · Sábados de 8 a 13 hs' },
   { key: 'instagram', label: 'Instagram (link)', hint: 'Ej.: https://www.instagram.com/...' },
   { key: 'facebook', label: 'Facebook (link)' },
+  { key: 'youtubeUrl', label: 'Video de YouTube o canal', hint: 'Pegá el link de cualquier video o de tu canal (ej.: https://youtu.be/... o https://www.youtube.com/watch?v=...). Aparecerá en los productos de la tienda.' },
   { key: 'email', label: 'E-mail' },
   { key: 'heroTitle', label: 'Título de la portada' },
   { key: 'heroText', label: 'Texto de la portada', long: true },
@@ -89,6 +91,16 @@ export function StoreSettingsForm() {
           </label>
         ))}
       </section>
+
+      {draft.youtubeUrl && (
+        <section className="rounded-2xl border border-piedra-200 bg-white p-5">
+          <h2 className="font-display font-bold">Vista previa del video configurado</h2>
+          <p className="mt-1 text-sm text-piedra-500">Así lo verán los clientes en los detalles de productos:</p>
+          <div className="mt-3 max-w-xl">
+            <YouTubeEmbed url={draft.youtubeUrl} />
+          </div>
+        </section>
+      )}
 
       <section className="rounded-2xl border border-piedra-200 bg-white p-5">
         <h2 className="font-display font-bold">Fotos de “Comprá por ambiente”</h2>

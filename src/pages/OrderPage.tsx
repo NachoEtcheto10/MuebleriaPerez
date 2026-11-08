@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ColorSelect, QtyControl } from '../components/CartDrawer'
+import { QtyControl } from '../components/CartDrawer'
 import { Icon } from '../components/Icon'
 import { ProductImage } from '../components/ProductImage'
 import { formatPrice, waLink } from '../lib/format'
@@ -38,7 +38,7 @@ export function OrderPage() {
 
   // Agrupa las opciones: efectivo, cada plan y precio de lista
   const groups: { title: string; items: typeof options }[] = [{ title: 'Contado', items: options.filter((o) => o.id === 'efectivo' || o.id === 'lista') }]
-  for (const plan of settings.plans.filter((p) => p.enabled)) {
+  for (const plan of settings.plans.filter((p) => p.enabled && p.id !== 'credito-personal')) {
     groups.push({ title: plan.name, items: options.filter((o) => o.id.startsWith(plan.id + '-')) })
   }
 
@@ -67,8 +67,32 @@ export function OrderPage() {
                   <ProductImage product={l.product} badge={false} className="h-20 w-24 shrink-0 rounded-xl" />
                   <div className="min-w-0 flex-1">
                     <Link to={`/producto/${l.product.id}`} className="font-medium leading-snug">{l.product.name}</Link>
-                    {l.item.color && l.product.colors.length < 2 && <p className="text-xs text-piedra-500">Color: {l.item.color}</p>}
-                    <div className="max-w-xs"><ColorSelect colors={l.product.colors} value={l.item.color} onChange={(c) => cart.setColor(i, c)} /></div>
+                    {l.product.colors.length > 1 && (
+                      <div className="mt-2">
+                        <p className="text-xs font-semibold text-piedra-600">
+                          Color: {l.item.color ? <strong className="text-madera-700">{l.item.color}</strong> : <span className="text-piedra-400 font-normal">Opcional: elegí una terminación</span>}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {l.product.colors.map((c) => {
+                            const isChosen = l.item.color === c
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => cart.setColor(i, isChosen ? '' : c)}
+                                className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
+                                  isChosen
+                                    ? 'border-piedra-900 bg-piedra-900 text-white font-semibold shadow-sm'
+                                    : 'border-piedra-200 bg-white text-piedra-700 hover:border-piedra-400'
+                                }`}
+                              >
+                                {c}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <QtyControl value={l.item.qty} onChange={(n) => cart.update(i, n)} />
                       <span className="font-semibold">{l.unit != null ? formatPrice(l.unit * l.item.qty) : 'Consultar'}</span>
@@ -96,13 +120,19 @@ export function OrderPage() {
                         <label key={o.id}
                           className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${optionId === o.id ? 'border-piedra-800 bg-piedra-50 ring-1 ring-piedra-800' : 'border-piedra-200 hover:border-piedra-400'}`}>
                           <input type="radio" name="pago" value={o.id} checked={optionId === o.id} onChange={() => setOptionId(o.id)} className="mt-1 accent-piedra-800" />
-                          <span className="text-sm">
-                            <span className="block font-semibold">
-                              {o.id === 'efectivo' ? `Efectivo o transferencia` : o.id === 'lista' ? 'Precio de lista' : `${o.n} cuotas`}
-                              {o.id === 'efectivo' && <span className="ml-1.5 rounded-full bg-madera-600 px-1.5 py-0.5 text-[0.65rem] font-bold text-white">{settings.cashDiscountPct}% OFF</span>}
-                              {o.n > 1 && o.factor <= 1 && <span className="ml-1.5 text-xs font-semibold text-madera-700">sin interés</span>}
+                          <span className="min-w-0 flex-1 text-sm">
+                            <span className="flex flex-wrap items-center gap-1.5 font-semibold">
+                              <span>{o.id === 'efectivo' ? `Efectivo o transferencia` : o.id === 'lista' ? 'Precio de lista' : `${o.n} cuotas`}</span>
+                              {o.id === 'efectivo' && (
+                                <span className="inline-flex shrink-0 items-center rounded-full bg-madera-600 px-2 py-0.5 text-[0.68rem] font-bold text-white shadow-xs">
+                                  {settings.cashDiscountPct}% OFF
+                                </span>
+                              )}
+                              {o.n > 1 && o.factor <= 1 && (
+                                <span className="shrink-0 text-xs font-semibold text-madera-700">sin interés</span>
+                              )}
                             </span>
-                            <span className="text-piedra-500">
+                            <span className="mt-0.5 block text-piedra-500">
                               {o.n > 1 ? `${o.n} x ${formatPrice(total / o.n)} · total ${formatPrice(total)}` : formatPrice(total)}
                             </span>
                           </span>
@@ -123,18 +153,33 @@ export function OrderPage() {
             <div className="mt-4 space-y-3">
               <label className="block text-sm">
                 <span className="font-medium">Nombre y apellido</span>
-                <input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} autoComplete="name"
-                  className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2.5 text-[16px] outline-none focus:border-madera-500 sm:text-sm" />
+                <input
+                  value={customer.name}
+                  onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+                  placeholder="Ej.: Juan Pérez"
+                  autoComplete="name"
+                  className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2.5 text-[16px] outline-none focus:border-madera-500 sm:text-sm"
+                />
               </label>
               <label className="block text-sm">
                 <span className="font-medium">Localidad</span>
-                <input value={customer.city} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} autoComplete="address-level2"
-                  className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2.5 text-[16px] outline-none focus:border-madera-500 sm:text-sm" />
+                <input
+                  value={customer.city}
+                  onChange={(e) => setCustomer({ ...customer, city: e.target.value })}
+                  placeholder="Ej.: Concepción del Uruguay, Entre Ríos"
+                  autoComplete="address-level2"
+                  className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2.5 text-[16px] outline-none focus:border-madera-500 sm:text-sm"
+                />
               </label>
               <label className="block text-sm">
                 <span className="font-medium">Comentarios <span className="font-normal text-piedra-400">(opcional)</span></span>
-                <textarea value={customer.notes} onChange={(e) => setCustomer({ ...customer, notes: e.target.value })} rows={2}
-                  className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2.5 text-[16px] outline-none focus:border-madera-500 sm:text-sm" />
+                <textarea
+                  value={customer.notes}
+                  onChange={(e) => setCustomer({ ...customer, notes: e.target.value })}
+                  rows={2}
+                  placeholder="Ej.: Entregar por la tarde / Timbre 2B / Aclaraciones sobre la entrega"
+                  className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2.5 text-[16px] outline-none focus:border-madera-500 sm:text-sm"
+                />
               </label>
             </div>
 

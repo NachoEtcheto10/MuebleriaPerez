@@ -20,7 +20,7 @@ export function SearchBox({ className = '', onDone }: { className?: string; onDo
 
   useEffect(() => setQ(params.get('q') || ''), [params])
 
-  const results = useMemo(() => (q.trim().length >= 2 ? searchProducts(products, q).slice(0, 6) : []), [products, q])
+  const results = useMemo(() => (q.trim().length >= 2 ? searchProducts(products.filter((p) => !p.hidden), q).slice(0, 6) : []), [products, q])
 
   useEffect(() => {
     const close = (e: MouseEvent) => {

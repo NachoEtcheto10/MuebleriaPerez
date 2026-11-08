@@ -38,7 +38,8 @@ export function mergeSettings(data: Partial<StoreSettings> | null | undefined): 
 const PRODUCT_DEFAULTS: Omit<Product, 'id'> = {
   code: '', name: '', description: '', category: 'otros', subcategory: null, brand: null, size: null,
   measure: null, material: null, kind: null, model: null, colors: [], price_list: null, discount_pct: 0,
-  available: true, featured: false, images: [], sort: 0,
+  available: true, featured: false, images: [], sort: 0, hidden: false, youtube_url: '',
+  offer: '', offer_label: '',
 }
 
 export function normalizeProduct(p: Partial<Product> & { id: string }): Product {
@@ -49,6 +50,11 @@ export function normalizeProduct(p: Partial<Product> & { id: string }): Product 
     discount_pct: Number(p.discount_pct || 0),
     colors: p.colors || [],
     images: p.images || [],
+    sort: Number(p.sort || 0),
+    hidden: Boolean(p.hidden),
+    youtube_url: p.youtube_url || '',
+    offer: p.offer || '',
+    offer_label: p.offer_label || '',
   }
 }
 

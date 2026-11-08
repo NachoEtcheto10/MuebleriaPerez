@@ -57,7 +57,7 @@ function Login({ onLogin }: { onLogin(): void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-piedra-100 px-4">
       <form onSubmit={submit} className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-xl">
-        <img src="/logo-perez.png" alt="Pérez Muebles & Colchones" className="mx-auto h-20 w-20 rounded-2xl" />
+        <img src="/logo-admin.png" alt="Pérez Muebles & Colchones" className="mx-auto h-20 w-20 rounded-2xl shadow-md" />
         <h1 className="mt-5 text-center font-display text-xl font-bold">Administración</h1>
         <p className="mt-1 text-center text-sm text-piedra-500">Acceso solo para el personal de la tienda</p>
         {!demo && (
@@ -110,7 +110,7 @@ export function AdminApp() {
       <div className="min-h-screen bg-piedra-50">
         <header className="sticky top-0 z-30 border-b border-piedra-200 bg-white">
           <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
-            <img src="/logo-perez.png" alt="" className="h-9 w-9 rounded-lg" />
+            <img src="/logo-admin.png" alt="" className="h-9 w-9 rounded-lg shadow-sm" />
             <span className="font-display font-bold">Administración</span>
             <nav className="ml-4 hidden gap-1 md:flex">
               {TABS.map((t) => (

@@ -47,7 +47,9 @@ export function Home() {
 
   const counts = useMemo(() => {
     const m = new Map<string, number>()
-    for (const p of products) m.set(p.category, (m.get(p.category) || 0) + 1)
+    for (const p of products) {
+      if (!p.hidden) m.set(p.category, (m.get(p.category) || 0) + 1)
+    }
     return m
   }, [products])
 
@@ -57,16 +59,16 @@ export function Home() {
   const rooms = useMemo(() => CATEGORIES.filter((c) => (counts.get(c.slug) || 0) > 0), [counts])
 
   const featured = useMemo(() => {
-    const marked = products.filter((p) => p.featured && p.available)
+    const marked = products.filter((p) => p.featured && p.available && !p.hidden)
     if (marked.length) return marked.slice(0, 16)
     const picks: typeof products = []
     for (const c of CATEGORIES) {
-      const p = products.find((x) => x.category === c.slug && x.available && x.price_list != null && !picks.includes(x))
+      const p = products.find((x) => x.category === c.slug && x.available && !x.hidden && x.price_list != null && !picks.includes(x))
       if (p) picks.push(p)
     }
     for (const p of products) {
       if (picks.length >= 12) break
-      if (p.available && p.price_list != null && !picks.includes(p)) picks.push(p)
+      if (p.available && !p.hidden && p.price_list != null && !picks.includes(p)) picks.push(p)
     }
     return picks
   }, [products])
@@ -98,10 +100,10 @@ export function Home() {
           {/* Logo en alta definición: en celular arriba y centrado, en escritorio a la derecha */}
           <div className="flex justify-center md:order-last">
             <img
-              src="/logo.jfif"
+              src="/logo.png"
               onError={(e) => { e.currentTarget.src = '/logo-perez.png' }}
               alt="Pérez Muebles & Colchones"
-              className="w-40 rounded-3xl object-contain shadow-2xl ring-1 ring-white/10 sm:w-52 md:w-80"
+              className="w-44 rounded-3xl bg-white p-4 object-contain shadow-2xl ring-1 ring-white/10 sm:w-56 md:w-80"
             />
           </div>
           <div>

@@ -22,6 +22,9 @@ function sortProducts(list: Product[], sort: string) {
   if (sort === 'precio-asc') out.sort((a, b) => price(a) - price(b))
   else if (sort === 'precio-desc') out.sort((a, b) => (listPrice(b) ?? -1) - (listPrice(a) ?? -1))
   else if (sort === 'nombre') out.sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  else {
+    out.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+  }
   // Los no disponibles siempre al final
   return out.sort((a, b) => Number(b.available) - Number(a.available))
 }
@@ -75,7 +78,7 @@ export function Shop() {
 
   // Productos de la categoría o de la búsqueda, antes de los filtros
   const base = useMemo(() => {
-    let list = q ? searchProducts(products, q) : products
+    let list = (q ? searchProducts(products, q) : products).filter((p) => !p.hidden)
     if (cat) list = list.filter((p) => p.category === cat)
     if (sub) list = list.filter((p) => p.subcategory === sub)
     return list
@@ -87,15 +90,15 @@ export function Shop() {
     if (material) list = list.filter((p) => p.material === material)
     if (brand) list = list.filter((p) => p.brand === brand)
     if (onlyAvailable) list = list.filter((p) => p.available)
-    return q && sort === 'relevancia' ? list : sortProducts(list, sort)
-  }, [base, size, material, brand, onlyAvailable, sort, q])
+    return sortProducts(list, sort)
+  }, [base, size, material, brand, onlyAvailable, sort])
 
   const sizes = SIZES.filter((s) => base.some((p) => p.size === s))
   const materials = ['resortes', 'espuma'].filter((m) => base.some((p) => p.material === m))
   const brands = [...new Set(base.map((p) => p.brand).filter(Boolean) as string[])].sort()
   const activeFilters = [size, material, brand, onlyAvailable ? '1' : ''].filter(Boolean).length
 
-  const countIn = (c: string, s?: string) => products.filter((p) => p.category === c && (!s || p.subcategory === s)).length
+  const countIn = (c: string, s?: string) => products.filter((p) => !p.hidden && p.category === c && (!s || p.subcategory === s)).length
 
   const title = q ? `Resultados para “${q}”` : subcategory?.name || category?.name || 'Toda la tienda'
 
