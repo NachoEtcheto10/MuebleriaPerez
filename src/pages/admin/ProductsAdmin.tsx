@@ -129,11 +129,9 @@ export function ProductsAdmin() {
   const [importBusy, setImportBusy] = useState(false)
 
   const [ytModalOpen, setYtModalOpen] = useState(false)
-  const [ytApiKey, setYtApiKey] = useState(
-    () => localStorage.getItem('perez_yt_key') || (import.meta.env.VITE_YOUTUBE_API_KEY as string) || ''
-  )
+  const ytApiKey = (import.meta.env.VITE_YOUTUBE_API_KEY as string) || 'AIzaSyCZeQEG3YCujBfABUDewTXlZs9JxQAeK3c'
   const [ytChannelId, setYtChannelId] = useState(
-    () => localStorage.getItem('perez_yt_channel') || (import.meta.env.VITE_YOUTUBE_CHANNEL_ID as string) || ''
+    () => localStorage.getItem('perez_yt_channel') || (import.meta.env.VITE_YOUTUBE_CHANNEL_ID as string) || 'UCdGgCni4gJRWSXpo4BC65JA'
   )
   const [ytBusy, setYtBusy] = useState(false)
   const [ytResult, setYtResult] = useState<YouTubeSyncResult | null>(null)
@@ -301,13 +299,12 @@ export function ProductsAdmin() {
 
   // Sincronización con YouTube
   const handleSyncYouTube = async () => {
-    if (!ytApiKey.trim() || !ytChannelId.trim()) {
-      return toast('Completá la API Key y el ID del canal de YouTube', 'error')
+    if (!ytChannelId.trim()) {
+      return toast('Ingresá el ID del canal o de la playlist de YouTube', 'error')
     }
     setYtBusy(true)
     setYtResult(null)
     try {
-      localStorage.setItem('perez_yt_key', ytApiKey.trim())
       localStorage.setItem('perez_yt_channel', ytChannelId.trim())
 
       const res = await syncYouTubeVideos(ytApiKey, ytChannelId, products)
@@ -892,16 +889,13 @@ export function ProductsAdmin() {
             </p>
 
             <div className="mt-4 space-y-3">
-              <label className="block text-sm">
-                <span className="font-medium text-piedra-700">Clave de API de YouTube (API Key)</span>
-                <input
-                  type="password"
-                  value={ytApiKey}
-                  onChange={(e) => setYtApiKey(e.target.value)}
-                  placeholder="AIzaSy..."
-                  className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2 text-sm outline-none focus:border-red-500 font-mono"
-                />
-              </label>
+              <div className="flex items-center justify-between rounded-xl bg-piedra-50 border border-piedra-200 px-3.5 py-2.5 text-xs">
+                <span className="text-piedra-600 font-medium">Conexión con YouTube API</span>
+                <span className="inline-flex items-center gap-1.5 font-semibold text-green-700 bg-green-100/70 px-2 py-0.5 rounded-full">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
+                  Conectada y lista
+                </span>
+              </div>
 
               <label className="block text-sm">
                 <span className="font-medium text-piedra-700">ID del Canal o ID de Lista de Reproducción</span>
@@ -912,7 +906,7 @@ export function ProductsAdmin() {
                   className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2 text-sm outline-none focus:border-red-500 font-mono"
                 />
                 <span className="mt-1 block text-[0.7rem] text-piedra-400">
-                  Encontralo en YouTube → Configuración avanzada → ID de canal (empieza con UC...).
+                  Canal (empieza con UC...) o Playlist de videos (empieza con PL...).
                 </span>
               </label>
 
@@ -946,7 +940,7 @@ export function ProductsAdmin() {
               </button>
               <button
                 type="button"
-                disabled={ytBusy || !ytApiKey || !ytChannelId}
+                disabled={ytBusy || !ytChannelId.trim()}
                 onClick={handleSyncYouTube}
                 className="rounded-xl bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
               >
