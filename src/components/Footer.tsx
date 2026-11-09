@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { useStore } from '../lib/store'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
@@ -132,9 +131,18 @@ export function Footer() {
       <div className="border-t border-white/10 bg-black/20">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-center text-xs text-piedra-400 sm:flex-row sm:text-left">
           <span>© {new Date().getFullYear()} Pérez Muebles &amp; Colchones. Todos los derechos reservados.</span>
-          <Link to="/admin" className="font-medium hover:text-piedra-200">
-            Panel de administración
-          </Link>
+          <div className="flex items-center gap-1.5 text-xs text-piedra-400">
+            <span>Desarrollado por</span>
+            <a
+              href="https://www.instagram.com/sodalis.software/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 font-semibold text-piedra-200 transition hover:border-madera-500/50 hover:bg-white/10 hover:text-white active:scale-95"
+            >
+              <Icon name="instagram" size={14} className="text-madera-400" />
+              <span>Sodalis</span>
+            </a>
+          </div>
         </div>
       </div>
     </footer>
