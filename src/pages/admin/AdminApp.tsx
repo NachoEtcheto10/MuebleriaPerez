@@ -34,7 +34,7 @@ function ToastHost({ children }: { children: ReactNode }) {
 // ------------------------------------------------------------------ login
 
 function Login({ onLogin }: { onLogin(): void }) {
-  const [email, setEmail] = useState('perezmueblesycolchones@gmail.com')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -64,6 +64,7 @@ function Login({ onLogin }: { onLogin(): void }) {
           <label className="mt-6 block text-sm">
             <span className="font-medium">E-mail</span>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username"
+              placeholder="tu-email@ejemplo.com"
               className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2.5 text-[16px] outline-none focus:border-madera-500 sm:text-sm" />
           </label>
         )}

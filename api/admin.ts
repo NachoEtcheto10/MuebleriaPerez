@@ -2,7 +2,7 @@
 // - "me": dice si el token es de un admin (no requiere estar logueado)
 // - "logout": cierra la sesión de ese token
 // - el resto (guardar/borrar productos y configuración) solo para admins
-import { HttpError, adminFromRequest, db, handler, json, requireAdmin, sessionToken } from './_lib/server.js'
+import { HttpError, adminFromRequest, checkRateLimit, db, handler, json, requireAdmin, sessionToken } from './_lib/server.js'
 
 type Row = Record<string, unknown>
 
@@ -74,6 +74,7 @@ async function upsertProduct(p: ReturnType<typeof cleanProduct>) {
 }
 
 export const POST = handler(async (req) => {
+  checkRateLimit(req, 60, 60_000)
   let body: Row
   try {
     body = (await req.json()) as Row

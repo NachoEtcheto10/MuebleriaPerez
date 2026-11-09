@@ -26,8 +26,46 @@ export function db() {
 export function json(data: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers },
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      ...headers,
+    },
   })
+}
+
+// In-memory rate limiting para mitigar ataques de fuerza bruta y denegación de servicio (ISO 27001 / SOC 2)
+const rateLimits = new Map<string, { count: number; resetAt: number }>()
+
+export function getClientIp(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for')
+  if (forwarded) return forwarded.split(',')[0].trim()
+  return req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown-client'
+}
+
+export function checkRateLimit(req: Request, maxRequests = 100, windowMs = 60_000) {
+  const ip = getClientIp(req)
+  const now = Date.now()
+  const current = rateLimits.get(ip)
+
+  if (!current || now > current.resetAt) {
+    rateLimits.set(ip, { count: 1, resetAt: now + windowMs })
+    // Limpieza periódica de IPs antiguas para evitar consumo de memoria
+    if (rateLimits.size > 2000) {
+      for (const [k, v] of rateLimits.entries()) {
+        if (now > v.resetAt) rateLimits.delete(k)
+      }
+    }
+    return
+  }
+
+  current.count++
+  if (current.count > maxRequests) {
+    throw new HttpError(429, 'Demasiadas solicitudes. Por favor esperá un minuto antes de reintentar.')
+  }
 }
 
 /** Envuelve un manejador: los errores se devuelven como JSON con un mensaje legible */

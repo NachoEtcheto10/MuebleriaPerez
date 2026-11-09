@@ -35,6 +35,59 @@ export function ProductPage() {
     setQty(1)
     setColor(product?.colors.length === 1 ? product.colors[0] : undefined)
     window.scrollTo({ top: 0 })
+
+    if (product) {
+      document.title = `${product.name} | Pérez Muebles & Colchones`
+
+      // Meta description dinámica para SEO
+      const metaDesc = document.querySelector('meta[name="description"]')
+      const prevDesc = metaDesc?.getAttribute('content') || ''
+      if (metaDesc) {
+        metaDesc.setAttribute(
+          'content',
+          product.description ||
+            `${product.name} en Pérez Muebles & Colchones. Consultá cuotas sin interés y descuento en efectivo en Concepción del Uruguay.`
+        )
+      }
+
+      // Schema.org Product JSON-LD dinámico para Google Rich Snippets
+      const script = document.createElement('script')
+      script.type = 'application/ld+json'
+      script.id = 'product-schema-jsonld'
+      const productPrice = listPrice(product)
+      const schemaData = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: product.name,
+        description: product.description || product.name,
+        sku: product.code || product.id,
+        image: product.images.length > 0 ? product.images : ['https://perezmuebles.com.ar/logo.png'],
+        brand: {
+          '@type': 'Brand',
+          name: product.brand || 'Pérez Muebles',
+        },
+        offers: {
+          '@type': 'Offer',
+          url: window.location.href,
+          priceCurrency: 'ARS',
+          price: productPrice != null ? productPrice : 0,
+          availability: product.available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+          seller: {
+            '@type': 'Organization',
+            name: 'Pérez Muebles & Colchones',
+          },
+        },
+      }
+      script.text = JSON.stringify(schemaData)
+      document.head.appendChild(script)
+
+      return () => {
+        document.title = 'Pérez Muebles & Colchones | Tienda Online en Concepción del Uruguay'
+        if (metaDesc && prevDesc) metaDesc.setAttribute('content', prevDesc)
+        const oldScript = document.getElementById('product-schema-jsonld')
+        if (oldScript) oldScript.remove()
+      }
+    }
   }, [product])
 
   // El mismo modelo en otras medidas (colchones, conjuntos y sommiers)

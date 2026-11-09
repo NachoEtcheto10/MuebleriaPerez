@@ -17,7 +17,7 @@ export function ProductImage({ product, index = 0, className = '', badge = true 
   return (
     <div className={`relative overflow-hidden bg-piedra-100 ${className}`}>
       {src ? (
-        <img src={src} alt={product.name} loading="lazy" className={`h-full w-full object-cover ${gray}`} />
+        <img src={src} alt={product.name} loading="lazy" decoding="async" className={`h-full w-full object-cover ${gray}`} />
       ) : (
         <div className={`flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-piedra-100 to-crema-200 text-piedra-400 ${gray}`}>
           <Icon name={getCategory(product.category)?.icon || 'otros'} size={badge ? 44 : 22} strokeWidth={1.3} />

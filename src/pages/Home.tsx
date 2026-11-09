@@ -103,7 +103,11 @@ export function Home() {
               src="/logo.png"
               onError={(e) => { e.currentTarget.src = '/logo-perez.png' }}
               alt="Pérez Muebles & Colchones"
-              className="w-44 rounded-3xl bg-white p-4 object-contain shadow-2xl ring-1 ring-white/10 sm:w-56 md:w-80"
+              width={320}
+              height={320}
+              fetchPriority="high"
+              decoding="async"
+              className="w-44 rounded-3xl bg-white p-4 object-contain shadow-2xl ring-1 ring-white/10 sm:w-56 md:w-80 aspect-square"
             />
           </div>
           <div>
@@ -150,7 +154,7 @@ export function Home() {
             return (
               <Link key={c.slug} to={`/categoria/${c.slug}`}
                 className={`group relative isolate overflow-hidden rounded-3xl bg-piedra-200 shadow-card ${bentoClass(i, rooms.length)}`}>
-                <img src={categoryPhoto(c, settings.categoryImages)} alt="" loading="lazy"
+                <img src={categoryPhoto(c, settings.categoryImages)} alt={c.name} loading="lazy" decoding="async"
                   onError={(e) => { e.currentTarget.style.display = 'none' }}
                   className="absolute inset-0 -z-10 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                 <span className="absolute inset-0 -z-10 bg-gradient-to-t from-piedra-900/85 via-piedra-900/20 to-transparent" />

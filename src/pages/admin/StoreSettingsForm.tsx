@@ -106,7 +106,7 @@ export function StoreSettingsForm() {
         <h2 className="font-display font-bold">Fotos de “Comprá por ambiente”</h2>
         <p className="mt-1 text-sm text-piedra-500">Se muestran en el inicio. Si no cargás una, se usa una foto de ejemplo.</p>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {CATEGORIES.map((c) => {
+          {CATEGORIES.filter((c) => c.slug !== 'otros').map((c) => {
             const custom = draft.categoryImages?.[c.slug]
             return (
               <div key={c.slug} className="text-sm">

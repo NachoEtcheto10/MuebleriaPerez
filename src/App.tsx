@@ -5,13 +5,13 @@ import { Footer } from './components/Footer'
 import { Header } from './components/Header'
 import { Icon } from './components/Icon'
 import { useCart, useStore } from './lib/store'
-import { ContactPage } from './pages/ContactPage'
 import { Home } from './pages/Home'
-import { OrderPage } from './pages/OrderPage'
-import { ProductPage } from './pages/ProductPage'
-import { Shop } from './pages/Shop'
 
-// El panel de administración se carga aparte para que la tienda sea más liviana
+// Carga diferida de páginas secundarias para optimizar el First Load y Lighthouse Performance
+const Shop = lazy(() => import('./pages/Shop').then((m) => ({ default: m.Shop })))
+const ProductPage = lazy(() => import('./pages/ProductPage').then((m) => ({ default: m.ProductPage })))
+const OrderPage = lazy(() => import('./pages/OrderPage').then((m) => ({ default: m.OrderPage })))
+const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })))
 const AdminApp = lazy(() => import('./pages/admin/AdminApp').then((m) => ({ default: m.AdminApp })))
 
 function WhatsAppFloat() {
@@ -19,10 +19,23 @@ function WhatsAppFloat() {
   const cart = useCart()
   if (!settings.whatsapp || cart.open) return null
   return (
-    <a href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener" aria-label="Escribinos por WhatsApp"
-      className="fixed bottom-5 right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-[#25d366] text-white shadow-xl transition hover:scale-105">
+    <a
+      href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Escribinos por WhatsApp"
+      className="fixed bottom-5 right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-[#25d366] text-white shadow-xl transition hover:scale-105 active:scale-95"
+    >
       <Icon name="whatsapp" size={30} />
     </a>
+  )
+}
+
+function PageLoader() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center p-8 text-piedra-400">
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-piedra-300 border-t-madera-600" />
+    </div>
   )
 }
 
@@ -32,11 +45,15 @@ function StoreLayout() {
     <div className="flex min-h-screen flex-col">
       <Header />
       {error && (
-        <div className="bg-red-50 px-4 py-3 text-center text-sm text-red-800">No pudimos cargar el catálogo ({error}). Probá recargar la página.</div>
+        <div className="bg-red-50 px-4 py-3 text-center text-sm text-red-800">
+          No pudimos cargar el catálogo ({error}). Probá recargar la página.
+        </div>
       )}
-      <div className="flex-1">
-        <Outlet />
-      </div>
+      <main className="flex-1">
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
+      </main>
       <Footer />
       <CartDrawer />
       <WhatsAppFloat />

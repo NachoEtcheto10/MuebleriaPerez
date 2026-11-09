@@ -1,7 +1,8 @@
 // GET /api/catalog -> { products, settings }  (público: lo usa la tienda)
-import { db, handler, json } from './_lib/server.js'
+import { checkRateLimit, db, handler, json } from './_lib/server.js'
 
-export const GET = handler(async () => {
+export const GET = handler(async (req) => {
+  checkRateLimit(req, 120, 60_000)
   const sql = db()
   const [products, settings] = await Promise.all([
     sql`SELECT * FROM public.products ORDER BY sort ASC, name ASC`,
