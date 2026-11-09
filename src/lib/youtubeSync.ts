@@ -126,6 +126,14 @@ export async function syncYouTubeVideos(
             videoUrl,
           })
         }
+
+        // Si este video estaba vinculado antes a otro producto distinto, se lo desvinculamos al viejo
+        for (const other of products) {
+          if (other.id !== product.id && other.youtube_url === videoUrl) {
+            const cleared = { ...(updatedMap.get(other.id) || other), youtube_url: '' }
+            updatedMap.set(other.id, cleared)
+          }
+        }
       }
     }
   }

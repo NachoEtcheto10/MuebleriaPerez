@@ -129,7 +129,7 @@ export function ProductsAdmin() {
   const [importBusy, setImportBusy] = useState(false)
 
   const [ytModalOpen, setYtModalOpen] = useState(false)
-  const ytApiKey = (import.meta.env.VITE_YOUTUBE_API_KEY as string) || 'AIzaSyCZeQEG3YCujBfABUDewTXlZs9JxQAeK3c'
+  const ytApiKey = (import.meta.env.VITE_YOUTUBE_API_KEY as string) || 'AIzaSyB0iAcpQjKKw6CYigJmQhx1zBcLImOb1RE'
   const [ytChannelId, setYtChannelId] = useState(
     () => localStorage.getItem('perez_yt_channel') || (import.meta.env.VITE_YOUTUBE_CHANNEL_ID as string) || 'UCdGgCni4gJRWSXpo4BC65JA'
   )
