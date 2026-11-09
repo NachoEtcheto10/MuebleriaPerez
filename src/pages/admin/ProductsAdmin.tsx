@@ -129,8 +129,12 @@ export function ProductsAdmin() {
   const [importBusy, setImportBusy] = useState(false)
 
   const [ytModalOpen, setYtModalOpen] = useState(false)
-  const [ytApiKey, setYtApiKey] = useState(() => localStorage.getItem('perez_yt_key') || '')
-  const [ytChannelId, setYtChannelId] = useState(() => localStorage.getItem('perez_yt_channel') || '')
+  const [ytApiKey, setYtApiKey] = useState(
+    () => localStorage.getItem('perez_yt_key') || (import.meta.env.VITE_YOUTUBE_API_KEY as string) || ''
+  )
+  const [ytChannelId, setYtChannelId] = useState(
+    () => localStorage.getItem('perez_yt_channel') || (import.meta.env.VITE_YOUTUBE_CHANNEL_ID as string) || ''
+  )
   const [ytBusy, setYtBusy] = useState(false)
   const [ytResult, setYtResult] = useState<YouTubeSyncResult | null>(null)
 

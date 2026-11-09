@@ -33,7 +33,13 @@ export async function syncYouTubeVideos(
   const res = await fetch(url)
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}))
-    const msg = errorData?.error?.message || `Error ${res.status}: no se pudo conectar con YouTube`
+    const rawMsg = errorData?.error?.message || ''
+    if (rawMsg.includes('blocked') || rawMsg.includes('API_KEY_SERVICE_BLOCKED')) {
+      throw new Error(
+        'La API Key de Google no tiene habilitada la "YouTube Data API v3". Entrá a Google Cloud Console → APIs y servicios → Biblioteca, buscá "YouTube Data API v3" y hacé clic en HABILITAR (o en Credenciales quitá la restricción de API).'
+      )
+    }
+    const msg = rawMsg || `Error ${res.status}: no se pudo conectar con YouTube`
     throw new Error(msg)
   }
 
@@ -43,7 +49,9 @@ export async function syncYouTubeVideos(
   const details: { code: string; title: string; videoUrl: string }[] = []
   const errors: string[] = []
 
-  // Mapeamos los productos por código normalizado
+  const escapeReg = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  // Mapeamos los productos por código
   const productsByCode = new Map<string, Product>()
   for (const p of products) {
     if (p.code) {
@@ -66,11 +74,16 @@ export async function syncYouTubeVideos(
 
     // Buscamos si algún código de producto aparece en el título o descripción
     for (const [normCode, product] of productsByCode.entries()) {
-      // Expresión para buscar el código completo (ej. SOF-01, SOF01)
-      const pattern = new RegExp(`\\b${normCode}\\b|[\\[#(-]${normCode}[\\]#)-]`, 'i')
-      const rawCodePattern = new RegExp(`\\b${product.code.toUpperCase()}\\b`, 'i')
+      const rawCode = product.code.trim().toUpperCase()
+      const escapedRaw = escapeReg(rawCode)
+      const spaceCode = escapeReg(rawCode.replace(/[-_]/g, ' '))
 
-      if (pattern.test(fullText) || rawCodePattern.test(fullText)) {
+      // Coincidencias con límites de palabra flexibles
+      const rawRegex = new RegExp(`(^|[^A-Z0-9])${escapedRaw}([^A-Z0-9]|$)`, 'i')
+      const normRegex = new RegExp(`(^|[^A-Z0-9])${normCode}([^A-Z0-9]|$)`, 'i')
+      const spaceRegex = new RegExp(`(^|[^A-Z0-9])${spaceCode}([^A-Z0-9]|$)`, 'i')
+
+      if (rawRegex.test(fullText) || normRegex.test(fullText) || spaceRegex.test(fullText)) {
         if (product.youtube_url !== videoUrl) {
           const updated = { ...product, youtube_url: videoUrl }
           updatedMap.set(product.id, updated)
