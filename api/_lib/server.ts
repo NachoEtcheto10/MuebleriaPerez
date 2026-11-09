@@ -13,13 +13,10 @@ export class HttpError extends Error {
 
 let client: NeonQueryFunction<false, false> | null = null
 
-const DEFAULT_DATABASE_URL =
-  'postgresql://neondb_owner:npg_bKGSxywgL9W8@ep-holy-wind-b6ppegj5-pooler.c-2.sa-east-1.aws.neon.tech/neondb?sslmode=require'
-
 /** Conexión a Neon (se reutiliza entre pedidos mientras la función siga "caliente") */
 export function db() {
   if (!client) {
-    const raw = process.env.DATABASE_URL || DEFAULT_DATABASE_URL
+    const raw = process.env.DATABASE_URL || ''
     const url = raw.replace(/[?&]channel_binding=[^&]+/g, '')
     if (!url) throw new HttpError(500, 'El servidor no tiene configurada la variable DATABASE_URL')
     client = neon(url)
