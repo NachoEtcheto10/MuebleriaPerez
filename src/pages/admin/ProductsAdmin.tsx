@@ -888,7 +888,7 @@ export function ProductsAdmin() {
             </div>
 
             <p className="mt-3 text-xs text-piedra-600">
-              Busca los videos subidos a tu canal (incluso <strong>no listados</strong>) y, si en el título o descripción pusiste el código del producto (ej.: <code>SOF-01</code>), lo asocia automáticamente a ese producto.
+              Busca los videos subidos a tu canal (incluso <strong>no listados</strong>) y, si en el título o descripción incluís <strong>cód.(código)</strong> o <strong>cód. CÓDIGO</strong> (ej.: <code>cód.(SOF-01)</code>, <code>cód.123</code> o <code>cód. SOF-01</code>), lo asocia automáticamente a ese producto.
             </p>
 
             <div className="mt-4 space-y-3">

@@ -69,21 +69,25 @@ export async function syncYouTubeVideos(
 
     const videoTitle = snippet.title || ''
     const videoDesc = snippet.description || ''
-    const fullText = `${videoTitle} ${videoDesc}`.toUpperCase()
+    const fullText = `${videoTitle}\n${videoDesc}`
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`
 
-    // Buscamos si algún código de producto aparece en el título o descripción
+    // Buscamos si el título o descripción incluye el formato cód.(código), cód. CÓDIGO, cod. CÓDIGO, etc.
     for (const [normCode, product] of productsByCode.entries()) {
-      const rawCode = product.code.trim().toUpperCase()
+      const rawCode = product.code.trim()
       const escapedRaw = escapeReg(rawCode)
-      const spaceCode = escapeReg(rawCode.replace(/[-_]/g, ' '))
 
-      // Coincidencias con límites de palabra flexibles
-      const rawRegex = new RegExp(`(^|[^A-Z0-9])${escapedRaw}([^A-Z0-9]|$)`, 'i')
-      const normRegex = new RegExp(`(^|[^A-Z0-9])${normCode}([^A-Z0-9]|$)`, 'i')
-      const spaceRegex = new RegExp(`(^|[^A-Z0-9])${spaceCode}([^A-Z0-9]|$)`, 'i')
+      // Expresión regular que detecta:
+      // - cód.(SOF-01) o cód.(123)
+      // - cód.SOF-01 o cód.123
+      // - cód. SOF-01 o cód. 123
+      // - cod. / código: / codigo:
+      const codeRegex = new RegExp(
+        `(?:c[oó]d(?:igo)?(?:\\.|\\:|\\s)\\s*|\\bc[oó]d\\.)\\s*[(\\[{]?(?:${escapedRaw}|${normCode})[)\\]}]?(?:[^a-zA-Z0-9]|$)`,
+        'i'
+      )
 
-      if (rawRegex.test(fullText) || normRegex.test(fullText) || spaceRegex.test(fullText)) {
+      if (codeRegex.test(fullText)) {
         if (product.youtube_url !== videoUrl) {
           const updated = { ...product, youtube_url: videoUrl }
           updatedMap.set(product.id, updated)
