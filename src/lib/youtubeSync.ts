@@ -21,30 +21,57 @@ export async function syncYouTubeVideos(
 
   // Si pasaron un Channel ID (empieza con UC), la lista de subidas del canal empieza con UU
   let playlistId = cleanId
-  if (cleanId.startsWith('UC') && cleanId.length === 24) {
+  const isChannelId = cleanId.startsWith('UC') && cleanId.length === 24
+  if (isChannelId) {
     playlistId = 'UU' + cleanId.slice(2)
   }
 
-  // Obtenemos los videos de la playlist (soporta hasta 50 videos por página)
-  const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${encodeURIComponent(
+  // 1. Intentamos obtener los videos de la playlist de subidas o playlist personalizada
+  const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${encodeURIComponent(
     playlistId
   )}&key=${encodeURIComponent(cleanKey)}`
 
-  const res = await fetch(url)
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}))
-    const rawMsg = errorData?.error?.message || ''
+  let items: any[] = []
+  const playlistRes = await fetch(playlistUrl)
+
+  if (playlistRes.ok) {
+    const json = await playlistRes.json()
+    items = json.items || []
+  } else {
+    const errorData = await playlistRes.json().catch(() => ({}))
+    const rawMsg: string = errorData?.error?.message || ''
+
     if (rawMsg.includes('blocked') || rawMsg.includes('API_KEY_SERVICE_BLOCKED')) {
       throw new Error(
         'La API Key de Google no tiene habilitada la "YouTube Data API v3". Entrá a Google Cloud Console → APIs y servicios → Biblioteca, buscá "YouTube Data API v3" y hacé clic en HABILITAR (o en Credenciales quitá la restricción de API).'
       )
     }
-    const msg = rawMsg || `Error ${res.status}: no se pudo conectar con YouTube`
-    throw new Error(msg)
-  }
 
-  const json = await res.json()
-  const items = json.items || []
+    // 2. Si la playlist no fue encontrada y es un ID de canal, intentamos buscar videos públicos por canal
+    if (isChannelId) {
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(
+        cleanId
+      )}&maxResults=50&order=date&type=video&key=${encodeURIComponent(cleanKey)}`
+
+      const searchRes = await fetch(searchUrl)
+      if (searchRes.ok) {
+        const searchJson = await searchRes.json()
+        items = searchJson.items || []
+      }
+    }
+
+    // Si sigue sin obtener items y hubo error de playlist no encontrada
+    if (items.length === 0 && (playlistRes.status === 404 || rawMsg.includes('cannot be found') || rawMsg.includes('playlistNotFound'))) {
+      throw new Error(
+        'YouTube no encontró la lista de videos de tu canal. Esto ocurre cuando el canal es nuevo o el video está en "Privado".\n\n' +
+        'Opciones para solucionarlo:\n' +
+        '1. En YouTube Studio asegurate de que el video esté en "Público" o "No listado" (NO en "Privado"). Si es el primer video del canal, ponelo como "Público" unos minutos para que YouTube active la lista del canal.\n' +
+        '2. O creá una Lista de Reproducción (Playlist) en YouTube con tus videos y pegá su ID (empieza con PL...) en lugar del ID de canal.'
+      )
+    } else if (items.length === 0 && !playlistRes.ok) {
+      throw new Error(rawMsg || `Error ${playlistRes.status}: no se pudo conectar con YouTube`)
+    }
+  }
 
   const details: { code: string; title: string; videoUrl: string }[] = []
   const errors: string[] = []
@@ -64,7 +91,9 @@ export async function syncYouTubeVideos(
 
   for (const item of items) {
     const snippet = item.snippet
-    const videoId = snippet?.resourceId?.videoId
+    const videoId =
+      (snippet?.resourceId?.videoId as string | undefined) ||
+      (typeof item.id === 'string' ? item.id : (item.id?.videoId as string | undefined))
     if (!videoId) continue
 
     const videoTitle = snippet.title || ''
