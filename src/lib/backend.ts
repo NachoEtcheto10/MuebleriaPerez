@@ -265,9 +265,9 @@ function demoBackend(): Backend {
   }
 }
 
-// La URL de Neon Auth es pública (no es una contraseña). Si está configurada, la tienda usa el servidor (/api);
-// si no, funciona en "modo demo" con el catálogo del Excel guardado en el navegador.
-const authUrl = import.meta.env.VITE_NEON_AUTH_URL as string | undefined
+// La URL de Neon Auth es pública (no es una contraseña).
+const DEFAULT_AUTH_URL = 'https://ep-holy-wind-b6ppegj5.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth'
+const authUrl = (import.meta.env.VITE_NEON_AUTH_URL as string | undefined) || DEFAULT_AUTH_URL
 const hasNeon = !!authUrl && authUrl.startsWith('https://') && !authUrl.includes('ep-xxxx')
 
 export const backend: Backend = hasNeon ? neonBackend(authUrl) : demoBackend()
