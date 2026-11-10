@@ -105,7 +105,7 @@ export function Home() {
               alt="Pérez Muebles & Colchones"
               width={320}
               height={320}
-              fetchPriority="high"
+              loading="eager"
               decoding="async"
               className="w-44 rounded-3xl bg-white p-4 object-contain shadow-2xl ring-1 ring-white/10 sm:w-56 md:w-80 aspect-square"
             />
