@@ -145,6 +145,17 @@ export function Home() {
         </div>
       </section>
 
+      {/* Destacados */}
+      <section className="mx-auto max-w-7xl px-4 pt-14">
+        <div className="flex items-end justify-between gap-4">
+          <h2 className="font-display text-2xl font-bold sm:text-3xl">Productos destacados</h2>
+          <Link to="/tienda" className="shrink-0 text-sm font-semibold text-madera-700">Ver todo</Link>
+        </div>
+        <div className="mt-6">
+          <ProductCarousel products={featured} autoplay={5000} />
+        </div>
+      </section>
+
       {/* Categorías */}
       <section className="mx-auto max-w-7xl px-4 pt-14">
         <h2 className="font-display text-2xl font-bold sm:text-3xl">Comprá por ambiente</h2>
@@ -176,17 +187,6 @@ export function Home() {
               </Link>
             )
           })}
-        </div>
-      </section>
-
-      {/* Destacados */}
-      <section className="mx-auto max-w-7xl px-4 pt-14">
-        <div className="flex items-end justify-between gap-4">
-          <h2 className="font-display text-2xl font-bold sm:text-3xl">Productos destacados</h2>
-          <Link to="/tienda" className="shrink-0 text-sm font-semibold text-madera-700">Ver todo</Link>
-        </div>
-        <div className="mt-6">
-          <ProductCarousel products={featured} autoplay={5000} />
         </div>
       </section>
 
