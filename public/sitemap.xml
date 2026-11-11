@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://perezmuebles.com.ar/</loc>
+    <loc>https://www.perezmueblesycolchones.com.ar/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://perezmuebles.com.ar/tienda</loc>
+    <loc>https://www.perezmueblesycolchones.com.ar/tienda</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://perezmuebles.com.ar/categoria/sofas</loc>
+    <loc>https://www.perezmueblesycolchones.com.ar/categoria/sofas</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://perezmuebles.com.ar/categoria/colchones</loc>
+    <loc>https://www.perezmueblesycolchones.com.ar/categoria/colchones</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://perezmuebles.com.ar/categoria/habitacion</loc>
+    <loc>https://www.perezmueblesycolchones.com.ar/categoria/habitacion</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://perezmuebles.com.ar/categoria/comedor</loc>
+    <loc>https://www.perezmueblesycolchones.com.ar/categoria/comedor</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://perezmuebles.com.ar/categoria/oficina</loc>
+    <loc>https://www.perezmueblesycolchones.com.ar/categoria/oficina</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://perezmuebles.com.ar/contacto</loc>
+    <loc>https://www.perezmueblesycolchones.com.ar/contacto</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

@@ -61,7 +61,7 @@ export function ProductPage() {
         name: product.name,
         description: product.description || product.name,
         sku: product.code || product.id,
-        image: product.images.length > 0 ? product.images : ['https://perezmuebles.com.ar/logo.png'],
+        image: product.images.length > 0 ? product.images : ['https://www.perezmueblesycolchones.com.ar/logo.png'],
         brand: {
           '@type': 'Brand',
           name: product.brand || 'Pérez Muebles',
