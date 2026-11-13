@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { getCategory } from '../lib/catalog'
 import type { Product } from '../lib/types'
 import { Icon } from './Icon'
@@ -10,14 +11,41 @@ interface Props {
   badge?: boolean
 }
 
-/** Foto del producto. Sin foto, muestra un ícono de su categoría. Si no está disponible, en gris. */
+/** true si la foto es vertical (más alta que ancha) */
+export const isPortrait = (img: HTMLImageElement) => img.naturalHeight > img.naturalWidth * 1.02
+
+/**
+ * Foto del producto. Sin foto, muestra un ícono de su categoría. Si no está disponible, en gris.
+ * Las fotos verticales se muestran enteras (sin recortar) sobre un fondo difuminado de la misma foto,
+ * así el mueble se ve completo aunque el recuadro sea horizontal.
+ */
 export function ProductImage({ product, index = 0, className = '', badge = true }: Props) {
   const src = product.images[index]
   const gray = !product.available ? 'grayscale opacity-70' : ''
+  const ref = useRef<HTMLImageElement>(null)
+  const [portrait, setPortrait] = useState(false)
+  // Al cambiar de foto se vuelve a medir (si ya estaba en caché, onLoad puede no dispararse)
+  useEffect(() => {
+    const el = ref.current
+    setPortrait(!!el && el.complete && el.naturalWidth > 0 && isPortrait(el))
+  }, [src])
   return (
     <div className={`relative overflow-hidden bg-piedra-100 ${className}`}>
       {src ? (
-        <img src={src} alt={product.name} loading="lazy" decoding="async" className={`h-full w-full object-cover ${gray}`} />
+        <>
+          {portrait && (
+            <img src={src} alt="" aria-hidden="true" className={`absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl ${gray}`} />
+          )}
+          <img
+            ref={ref}
+            src={src}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            onLoad={(e) => setPortrait(isPortrait(e.currentTarget))}
+            className={`relative h-full w-full ${portrait ? 'object-contain' : 'object-cover'} ${gray}`}
+          />
+        </>
       ) : (
         <div className={`flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-piedra-100 to-crema-200 text-piedra-400 ${gray}`}>
           <Icon name={getCategory(product.category)?.icon || 'otros'} size={badge ? 44 : 22} strokeWidth={1.3} />

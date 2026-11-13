@@ -5,6 +5,7 @@ import { FinancingTable } from '../components/Financing'
 import { Icon } from '../components/Icon'
 import { ProductCarousel } from '../components/ProductCarousel'
 import { ProductImage } from '../components/ProductImage'
+import { usePortrait } from '../lib/usePortrait'
 import { YouTubeEmbed } from '../components/YouTubeEmbed'
 import { SIZES, getCategory, getSubcategory } from '../lib/catalog'
 import { formatPrice, waLink } from '../lib/format'
@@ -99,6 +100,9 @@ export function ProductPage() {
   }, [product, products])
 
   const relatedList = useMemo(() => (product ? related(product, products) : []), [product, products])
+  // Si la primera foto es vertical, el recuadro de la ficha también (así se ve grande y entera).
+  // Va antes del "if (!product)": los hooks de React no pueden quedar después de un return.
+  const portrait = usePortrait(product?.images[0])
 
   if (loading) return <div className="mx-auto max-w-7xl px-4 py-20 text-center text-piedra-500">Cargando…</div>
   if (!product) {
@@ -153,7 +157,7 @@ export function ProductPage() {
               touchX.current = null
               if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1)
             }}>
-            <ProductImage product={product} index={img} className="aspect-[4/3] rounded-3xl" />
+            <ProductImage product={product} index={img} className={`${portrait ? 'aspect-[4/5]' : 'aspect-[4/3]'} rounded-3xl`} />
             {total > 1 && (
               <>
                 <button type="button" onClick={() => go(-1)} aria-label="Foto anterior"
