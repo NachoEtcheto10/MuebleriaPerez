@@ -22,7 +22,8 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <article className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-piedra-200/70 bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-lg">
       <Link to={`/producto/${product.id}`} className="block">
-        <ProductImage product={product} className="aspect-[4/3] transition duration-500 group-hover:scale-[1.02]" />
+        {/* 4:5, casi la forma de una foto vertical de celular. La foto llena siempre la tarjeta (fill) */}
+        <ProductImage product={product} fill className="aspect-[4/5] transition duration-500 group-hover:scale-[1.02]" />
       </Link>
       <div className="flex flex-1 flex-col p-3 sm:p-4">
         {product.brand && (

@@ -9,31 +9,41 @@ interface Props {
   className?: string
   /** Muestra el cartel "No disponible" sobre la foto */
   badge?: boolean
+  /** La foto llena siempre el recuadro, aunque se recorte un poco (vistas previas de la tienda) */
+  fill?: boolean
 }
 
-/** true si la foto es vertical (más alta que ancha) */
-export const isPortrait = (img: HTMLImageElement) => img.naturalHeight > img.naturalWidth * 1.02
+/**
+ * ¿La foto tiene que mostrarse entera? Si su forma se parece a la del recuadro, lo llena (se recorta muy poco);
+ * si es muy distinta (por ejemplo, foto horizontal en recuadro vertical), se muestra entera para no cortar el mueble.
+ */
+function needsContain(img: HTMLImageElement) {
+  const box = img.parentElement
+  if (!box || !img.naturalWidth || !box.clientHeight) return false
+  const ratio = img.naturalWidth / img.naturalHeight / (box.clientWidth / box.clientHeight)
+  return ratio < 0.75 || ratio > 1.34
+}
 
 /**
  * Foto del producto. Sin foto, muestra un ícono de su categoría. Si no está disponible, en gris.
- * Las fotos verticales se muestran enteras (sin recortar) sobre un fondo difuminado de la misma foto,
- * así el mueble se ve completo aunque el recuadro sea horizontal.
+ * Si la foto tiene una forma muy distinta a la del recuadro, se muestra entera (sin recortar)
+ * sobre un fondo difuminado de la misma foto; si no, llena todo el recuadro.
  */
-export function ProductImage({ product, index = 0, className = '', badge = true }: Props) {
+export function ProductImage({ product, index = 0, className = '', badge = true, fill = false }: Props) {
   const src = product.images[index]
   const gray = !product.available ? 'grayscale opacity-70' : ''
   const ref = useRef<HTMLImageElement>(null)
-  const [portrait, setPortrait] = useState(false)
+  const [contain, setContain] = useState(false)
   // Al cambiar de foto se vuelve a medir (si ya estaba en caché, onLoad puede no dispararse)
   useEffect(() => {
     const el = ref.current
-    setPortrait(!!el && el.complete && el.naturalWidth > 0 && isPortrait(el))
-  }, [src])
+    setContain(!fill && !!el && el.complete && needsContain(el))
+  }, [src, fill])
   return (
     <div className={`relative overflow-hidden bg-piedra-100 ${className}`}>
       {src ? (
         <>
-          {portrait && (
+          {contain && (
             <img src={src} alt="" aria-hidden="true" className={`absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl ${gray}`} />
           )}
           <img
@@ -42,8 +52,8 @@ export function ProductImage({ product, index = 0, className = '', badge = true 
             alt={product.name}
             loading="lazy"
             decoding="async"
-            onLoad={(e) => setPortrait(isPortrait(e.currentTarget))}
-            className={`relative h-full w-full ${portrait ? 'object-contain' : 'object-cover'} ${gray}`}
+            onLoad={(e) => setContain(!fill && needsContain(e.currentTarget))}
+            className={`relative h-full w-full ${contain ? 'object-contain' : 'object-cover'} ${gray}`}
           />
         </>
       ) : (
