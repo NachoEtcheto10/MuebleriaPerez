@@ -127,6 +127,7 @@ export function ProductsAdmin() {
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [importBusy, setImportBusy] = useState(false)
+  const [importTab, setImportTab] = useState<'nuevos' | 'actualizados'>('nuevos')
 
   const [ytModalOpen, setYtModalOpen] = useState(false)
   const ytApiKey = (import.meta.env.VITE_YOUTUBE_API_KEY as string) || 'AIzaSyB0iAcpQjKKw6CYigJmQhx1zBcLImOb1RE'
@@ -272,6 +273,11 @@ export function ProductsAdmin() {
     try {
       const res = await parseProductsFile(file, products)
       setImportResult(res)
+      if (res.newProducts.length === 0 && res.updatedProducts.length > 0) {
+        setImportTab('actualizados')
+      } else {
+        setImportTab('nuevos')
+      }
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error al procesar el archivo Excel', 'error')
       setImportFile(null)
@@ -281,12 +287,26 @@ export function ProductsAdmin() {
   }
 
   const confirmImport = async () => {
-    if (!importResult || importResult.newProducts.length === 0) return
+    if (!importResult) return
+    const countNew = importResult.newProducts.length
+    const countUpdated = importResult.updatedProducts.length
+    if (countNew === 0 && countUpdated === 0) return
+
     setImportBusy(true)
     try {
-      await backend.saveProducts(importResult.newProducts)
-      setProducts([...products, ...importResult.newProducts])
-      toast(`¡Se importaron con éxito ${importResult.newProducts.length} productos nuevos!`)
+      const allToSave = [...importResult.newProducts, ...importResult.updatedProducts]
+      await backend.saveProducts(allToSave)
+
+      // Actualizar la lista en memoria en el estado de React preservando orden
+      const updatedMap = new Map(importResult.updatedProducts.map((p) => [p.id, p]))
+      const updatedExisting = products.map((p) => updatedMap.get(p.id) || p)
+      setProducts([...updatedExisting, ...importResult.newProducts])
+
+      const summaryParts: string[] = []
+      if (countNew > 0) summaryParts.push(`${countNew} nuevos agregados`)
+      if (countUpdated > 0) summaryParts.push(`${countUpdated} existentes actualizados`)
+      toast(`¡Operación completada con éxito: ${summaryParts.join(' y ')}!`)
+
       setImportModalOpen(false)
       setImportFile(null)
       setImportResult(null)
@@ -753,7 +773,7 @@ export function ProductsAdmin() {
             <div className="flex items-center justify-between border-b border-piedra-100 pb-4">
               <div>
                 <h2 className="font-display text-xl font-bold">Importar productos desde Excel o CSV</h2>
-                <p className="text-xs text-piedra-500">Cargá una planilla (.xlsx, .xls o .csv). Los productos repetidos se filtran automáticamente.</p>
+                <p className="text-xs text-piedra-500">Cargá una planilla (.xlsx, .xls o .csv). Los productos nuevos se agregan y los existentes actualizan sus datos sin perder fotos ni videos.</p>
               </div>
               <button
                 type="button"
@@ -786,55 +806,138 @@ export function ProductsAdmin() {
               )}
 
               {importResult && (
-                <div className="space-y-3 rounded-2xl border border-piedra-200 bg-piedra-50/50 p-4">
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    <span className="font-semibold text-piedra-800">
-                      Total de filas leídas: <strong>{importResult.totalRows}</strong>
-                    </span>
-                    <span className="font-semibold text-green-700">
-                      ✓ Nuevos para agregar: <strong>{importResult.newProducts.length}</strong>
-                    </span>
-                    <span className="font-semibold text-amber-700">
-                      ⚠ Omitidos (ya existen): <strong>{importResult.skippedCount}</strong>
-                    </span>
+                <div className="space-y-4 rounded-2xl border border-piedra-200 bg-piedra-50/50 p-4">
+                  {/* Tarjetas de resumen */}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-xs">
+                    <div className="rounded-xl border border-piedra-200 bg-white p-2.5">
+                      <span className="block text-piedra-500">Filas leídas</span>
+                      <strong className="text-base font-bold text-piedra-900">{importResult.totalRows}</strong>
+                    </div>
+                    <div className="rounded-xl border border-green-200 bg-green-50 p-2.5">
+                      <span className="block text-green-700">✓ Nuevos a agregar</span>
+                      <strong className="text-base font-bold text-green-800">{importResult.newProducts.length}</strong>
+                    </div>
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-2.5">
+                      <span className="block text-blue-700">↻ A actualizar</span>
+                      <strong className="text-base font-bold text-blue-800">{importResult.updatedProducts.length}</strong>
+                    </div>
+                    <div className="rounded-xl border border-piedra-200 bg-white p-2.5">
+                      <span className="block text-piedra-500">Sin cambios / Omitidos</span>
+                      <strong className="text-base font-bold text-piedra-700">{importResult.unchangedCount + importResult.skippedCount}</strong>
+                    </div>
                   </div>
 
-                  {importResult.newProducts.length > 0 ? (
+                  {/* Pestañas de previsualización si hay nuevos o actualizados */}
+                  {(importResult.newProducts.length > 0 || importResult.updatedProducts.length > 0) ? (
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-piedra-500 mb-1.5">
-                        Vista previa de nuevos productos ({importResult.newProducts.length}):
-                      </p>
-                      <div className="max-h-48 overflow-y-auto rounded-xl border border-piedra-200 bg-white">
-                        <table className="w-full text-xs">
-                          <thead className="bg-piedra-100 text-piedra-600 sticky top-0">
-                            <tr>
-                              <th className="p-2 text-left font-bold">Cód</th>
-                              <th className="p-2 text-left font-bold">Nombre</th>
-                              <th className="p-2 text-left font-bold">Categoría</th>
-                              <th className="p-2 text-right font-bold">Precio</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-piedra-100">
-                            {importResult.newProducts.slice(0, 50).map((p) => (
-                              <tr key={p.id}>
-                                <td className="p-2 font-mono font-medium">{p.code}</td>
-                                <td className="p-2">{p.name}</td>
-                                <td className="p-2 text-piedra-600">{p.category}</td>
-                                <td className="p-2 text-right font-semibold">
-                                  {p.price_list != null ? formatPrice(p.price_list) : 'Consultar'}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="flex items-center gap-2 border-b border-piedra-200 pb-2">
+                        {importResult.newProducts.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setImportTab('nuevos')}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                              importTab === 'nuevos'
+                                ? 'bg-green-600 text-white shadow-sm'
+                                : 'bg-piedra-100 text-piedra-600 hover:bg-piedra-200'
+                            }`}
+                          >
+                            Nuevos ({importResult.newProducts.length})
+                          </button>
+                        )}
+                        {importResult.updatedProducts.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setImportTab('actualizados')}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                              importTab === 'actualizados'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-piedra-100 text-piedra-600 hover:bg-piedra-200'
+                            }`}
+                          >
+                            A actualizar ({importResult.updatedProducts.length})
+                          </button>
+                        )}
                       </div>
-                      {importResult.newProducts.length > 50 && (
-                        <p className="text-[0.7rem] text-piedra-400 mt-1">Mostrando los primeros 50 de {importResult.newProducts.length} productos nuevos.</p>
+
+                      {/* Tabla: Nuevos */}
+                      {importTab === 'nuevos' && importResult.newProducts.length > 0 && (
+                        <div className="mt-2.5">
+                          <p className="mb-1 text-[0.7rem] font-bold uppercase tracking-wider text-piedra-500">
+                            Vista previa de productos que se crearán:
+                          </p>
+                          <div className="max-h-48 overflow-y-auto rounded-xl border border-piedra-200 bg-white">
+                            <table className="w-full text-xs">
+                              <thead className="sticky top-0 bg-piedra-100 text-piedra-600">
+                                <tr>
+                                  <th className="p-2 text-left font-bold">Cód</th>
+                                  <th className="p-2 text-left font-bold">Nombre</th>
+                                  <th className="p-2 text-left font-bold">Categoría</th>
+                                  <th className="p-2 text-right font-bold">Precio</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-piedra-100">
+                                {importResult.newProducts.slice(0, 50).map((p) => (
+                                  <tr key={p.id}>
+                                    <td className="p-2 font-mono font-medium">{p.code}</td>
+                                    <td className="p-2">{p.name}</td>
+                                    <td className="p-2 text-piedra-600">{p.category}</td>
+                                    <td className="p-2 text-right font-semibold">
+                                      {p.price_list != null ? formatPrice(p.price_list) : 'Consultar'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {importResult.newProducts.length > 50 && (
+                            <p className="mt-1 text-[0.7rem] text-piedra-400">
+                              Mostrando los primeros 50 de {importResult.newProducts.length} productos nuevos.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Tabla: A actualizar */}
+                      {importTab === 'actualizados' && importResult.updatedProducts.length > 0 && (
+                        <div className="mt-2.5">
+                          <div className="mb-2 rounded-lg bg-blue-50/80 p-2 text-[0.72rem] text-blue-900 border border-blue-100">
+                            <strong>Protección de datos:</strong> Se actualizarán precios, nombres o descripciones que vengan en la planilla. Las <strong>fotos</strong>, <strong>videos de YouTube</strong> y configuraciones de la web <strong>se conservan intactas</strong>. Si una celda está vacía en el archivo, se mantiene la información existente sin borrarla.
+                          </div>
+                          <div className="max-h-48 overflow-y-auto rounded-xl border border-piedra-200 bg-white">
+                            <table className="w-full text-xs">
+                              <thead className="sticky top-0 bg-piedra-100 text-piedra-600">
+                                <tr>
+                                  <th className="p-2 text-left font-bold">Cód</th>
+                                  <th className="p-2 text-left font-bold">Nombre</th>
+                                  <th className="p-2 text-left font-bold">Categoría</th>
+                                  <th className="p-2 text-right font-bold">Precio actualizado</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-piedra-100">
+                                {importResult.updatedProducts.slice(0, 50).map((p) => (
+                                  <tr key={p.id}>
+                                    <td className="p-2 font-mono font-medium">{p.code}</td>
+                                    <td className="p-2">{p.name}</td>
+                                    <td className="p-2 text-piedra-600">{p.category}</td>
+                                    <td className="p-2 text-right font-semibold text-blue-700">
+                                      {p.price_list != null ? formatPrice(p.price_list) : 'Consultar'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {importResult.updatedProducts.length > 50 && (
+                            <p className="mt-1 text-[0.7rem] text-piedra-400">
+                              Mostrando los primeros 50 de {importResult.updatedProducts.length} productos a actualizar.
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm font-semibold text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200">
-                      Todos los productos de este archivo ya existen en la tienda. No hay productos nuevos para agregar.
+                    <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+                      Todos los productos de este archivo ya existen en la tienda y tienen los mismos datos. No hay cambios pendientes.
                     </p>
                   )}
                 </div>
@@ -851,11 +954,21 @@ export function ProductsAdmin() {
               </button>
               <button
                 type="button"
-                disabled={!importResult || importResult.newProducts.length === 0 || importBusy}
+                disabled={
+                  !importResult ||
+                  (importResult.newProducts.length === 0 && importResult.updatedProducts.length === 0) ||
+                  importBusy
+                }
                 onClick={confirmImport}
                 className="rounded-xl bg-piedra-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-piedra-900 disabled:opacity-50"
               >
-                {importBusy ? 'Guardando…' : `Confirmar y agregar ${importResult?.newProducts.length || 0} productos`}
+                {importBusy
+                  ? 'Guardando…'
+                  : importResult?.newProducts.length && importResult?.updatedProducts.length
+                  ? `Guardar (${importResult.newProducts.length} nuevos y ${importResult.updatedProducts.length} actualizados)`
+                  : importResult?.updatedProducts.length
+                  ? `Guardar ${importResult.updatedProducts.length} productos actualizados`
+                  : `Guardar ${importResult?.newProducts.length || 0} productos nuevos`}
               </button>
             </div>
           </div>

@@ -240,8 +240,20 @@ function demoBackend(): Backend {
       writeLS(LS_PRODUCTS, list)
     },
     async saveProducts(updated) {
+      const current = await load()
       const map = new Map(updated.map((p) => [p.id, p]))
-      writeLS(LS_PRODUCTS, (await load()).map((p) => map.get(p.id) || p))
+      const merged = current.map((p) => {
+        const up = map.get(p.id)
+        if (up) {
+          map.delete(p.id)
+          return up
+        }
+        return p
+      })
+      for (const newP of map.values()) {
+        merged.push(newP)
+      }
+      writeLS(LS_PRODUCTS, merged)
     },
     async deleteProduct(id) {
       writeLS(LS_PRODUCTS, (await load()).filter((p) => p.id !== id))

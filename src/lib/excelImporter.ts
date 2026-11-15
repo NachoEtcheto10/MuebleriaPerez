@@ -5,6 +5,8 @@ import type { Product } from './types'
 
 export interface ImportResult {
   newProducts: Product[]
+  updatedProducts: Product[]
+  unchangedCount: number
   skippedCount: number
   skippedCodes: string[]
   totalRows: number
@@ -102,16 +104,26 @@ export async function parseProductsFile(file: File, existingProducts: Product[])
   const colorsKey = findKey([/^col/, /^termin/, /^acab/])
   const descKey = findKey([/^detall/, /^observ/, /^caract/])
 
-  // Conjuntos para detección rápida de duplicados
-  const existingCodes = new Set(
-    existingProducts.map((p) => normalizeHeader(p.code)).filter(Boolean)
-  )
-  const existingNames = new Set(
-    existingProducts.map((p) => normalizeHeader(p.name)).filter(Boolean)
-  )
+  // Mapeo rápido de productos existentes para búsqueda eficiente
+  const codeToExisting = new Map<string, Product>()
+  const nameToExisting = new Map<string, Product>()
+
+  for (const p of existingProducts) {
+    if (p.code) {
+      codeToExisting.set(normalizeHeader(p.code), p)
+    }
+    if (p.name) {
+      const normN = normalizeHeader(p.name)
+      if (normN.length > 5) {
+        nameToExisting.set(normN, p)
+      }
+    }
+  }
 
   const seenInBatch = new Set<string>()
   const newProducts: Product[] = []
+  const updatedProducts: Product[] = []
+  let unchangedCount = 0
   const skippedCodes: string[] = []
   const warnings: string[] = []
 
@@ -123,28 +135,145 @@ export async function parseProductsFile(file: File, existingProducts: Product[])
     let name = nameKey ? cleanString(row[nameKey]) : ''
     let code = codeKey ? cleanString(row[codeKey]) : ''
 
-    // Si la fila está vacía, ignorar
+    // Si la fila está totalmente vacía en nombre y código, ignorar
     if (!name && !code) continue
-
-    // Si falta nombre pero hay código o descripción alternativa
-    if (!name && code) name = `Producto ${code}`
-    if (!code) code = `PRD-${Date.now().toString().slice(-4)}-${autoIdCounter++}`
 
     const normCode = normalizeHeader(code)
     const normName = normalizeHeader(name)
 
-    // Detección de duplicado contra la base de datos existente
-    if (existingCodes.has(normCode) || (normName.length > 5 && existingNames.has(normName))) {
-      skippedCodes.push(code)
+    // Búsqueda de producto existente por código o nombre largo
+    const existing = (normCode ? codeToExisting.get(normCode) : undefined) ||
+                     (normName.length > 5 ? nameToExisting.get(normName) : undefined)
+
+    if (existing) {
+      const dedupeKey = normCode || existing.id
+      if (seenInBatch.has(dedupeKey)) {
+        skippedCodes.push(`${code || existing.code} (repetido en archivo)`)
+        continue
+      }
+      seenInBatch.add(dedupeKey)
+
+      let changed = false
+      const updated: Product = { ...existing }
+
+      // 1. Nombre: solo si viene no vacío en el archivo
+      if (nameKey && cleanString(row[nameKey])) {
+        const newName = cleanString(row[nameKey])
+        if (newName !== existing.name) {
+          updated.name = newName
+          changed = true
+        }
+      }
+
+      // 2. Descripción: solo si viene en el archivo y no está vacía
+      if (descKey && cleanString(row[descKey])) {
+        const newDesc = cleanString(row[descKey])
+        if (newDesc !== existing.description) {
+          updated.description = newDesc
+          changed = true
+        }
+      }
+
+      // 3. Precio de lista: solo si la celda tiene un valor numérico válido mayor a 0
+      // Si la celda está vacía, con '-' o 'consultar', se PRESERVA el precio que ya tenía
+      if (priceKey) {
+        const newPrice = parsePrice(row[priceKey])
+        if (newPrice != null && newPrice !== existing.price_list) {
+          updated.price_list = newPrice
+          changed = true
+        }
+      }
+
+      // 4. Categoría: solo si viene especificada y no está vacía
+      if (catKey && cleanString(row[catKey])) {
+        const rawC = cleanString(row[catKey])
+        const newCat = detectCategory(rawC, updated.name)
+        if (newCat && newCat !== 'otros' && newCat !== existing.category) {
+          updated.category = newCat
+          changed = true
+        }
+      }
+
+      // 5. Subcategoría
+      if (subCatKey && cleanString(row[subCatKey])) {
+        const newSub = cleanString(row[subCatKey])
+        if (newSub !== existing.subcategory) {
+          updated.subcategory = newSub
+          changed = true
+        }
+      }
+
+      // 6. Marca
+      if (brandKey && cleanString(row[brandKey])) {
+        const newBrand = cleanString(row[brandKey])
+        if (newBrand !== existing.brand) {
+          updated.brand = newBrand
+          changed = true
+        }
+      }
+
+      // 7. Medidas
+      if (measureKey && cleanString(row[measureKey])) {
+        const newMeasure = cleanString(row[measureKey])
+        if (newMeasure !== existing.measure) {
+          updated.measure = newMeasure
+          changed = true
+        }
+      }
+
+      // 8. Tamaño
+      if (sizeKey && cleanString(row[sizeKey])) {
+        const newSize = cleanString(row[sizeKey])
+        if (newSize !== existing.size) {
+          updated.size = newSize
+          changed = true
+        }
+      }
+
+      // 9. Colores: solo si vienen especificados
+      if (colorsKey) {
+        const newColors = parseColors(row[colorsKey])
+        if (newColors.length > 0 && JSON.stringify(newColors) !== JSON.stringify(existing.colors)) {
+          updated.colors = newColors
+          changed = true
+        }
+      }
+
+      // 10. Código: si el existente no tenía código y la planilla lo trae
+      if (code && !existing.code) {
+        updated.code = code
+        changed = true
+      }
+
+      // NOTA: Se PRESERVAN siempre y de forma intacta:
+      // - images (fotos cargadas en la web)
+      // - youtube_url (videos vinculados)
+      // - featured (si está en destacados)
+      // - available (disponibilidad)
+      // - discount_pct (descuento)
+      // - sort (ordenamiento en la tienda)
+      // - hidden (visibilidad)
+      // - offer y offer_label
+
+      if (changed) {
+        updatedProducts.push(updated)
+      } else {
+        unchangedCount++
+      }
+
       continue
     }
 
-    // Detección de duplicado dentro del mismo lote del archivo
-    if (seenInBatch.has(normCode)) {
+    // SI NO EXISTE: se crea como producto nuevo
+    if (!name && code) name = `Producto ${code}`
+    if (!code) code = `PRD-${Date.now().toString().slice(-4)}-${autoIdCounter++}`
+
+    const finalNormCode = normalizeHeader(code)
+    if (seenInBatch.has(finalNormCode)) {
       skippedCodes.push(`${code} (repetido en archivo)`)
       continue
     }
-    seenInBatch.add(normCode)
+    seenInBatch.add(finalNormCode)
 
     const rawCat = catKey ? cleanString(row[catKey]) : ''
     const category = detectCategory(rawCat, name)
@@ -187,10 +316,11 @@ export async function parseProductsFile(file: File, existingProducts: Product[])
 
   return {
     newProducts,
+    updatedProducts,
+    unchangedCount,
     skippedCount: skippedCodes.length,
     skippedCodes,
     totalRows: rawRows.length,
     warnings,
   }
 }
-
