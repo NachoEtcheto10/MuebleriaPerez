@@ -130,7 +130,9 @@ export function ProductsAdmin() {
   const [importTab, setImportTab] = useState<'nuevos' | 'actualizados'>('nuevos')
 
   const [ytModalOpen, setYtModalOpen] = useState(false)
-  const ytApiKey = (import.meta.env.VITE_YOUTUBE_API_KEY as string) || 'AIzaSyB0iAcpQjKKw6CYigJmQhx1zBcLImOb1RE'
+  const [ytApiKey, setYtApiKey] = useState(
+    () => localStorage.getItem('perez_yt_api_key') || (import.meta.env.VITE_YOUTUBE_API_KEY as string) || ''
+  )
   const [ytChannelId, setYtChannelId] = useState(
     () => localStorage.getItem('perez_yt_channel') || (import.meta.env.VITE_YOUTUBE_CHANNEL_ID as string) || 'UCdGgCni4gJRWSXpo4BC65JA'
   )
@@ -319,12 +321,16 @@ export function ProductsAdmin() {
 
   // Sincronización con YouTube
   const handleSyncYouTube = async () => {
+    if (!ytApiKey.trim()) {
+      return toast('Tenés que ingresar tu API Key de YouTube Data API v3', 'error')
+    }
     if (!ytChannelId.trim()) {
       return toast('Ingresá el ID del canal o de la playlist de YouTube', 'error')
     }
     setYtBusy(true)
     setYtResult(null)
     try {
+      localStorage.setItem('perez_yt_api_key', ytApiKey.trim())
       localStorage.setItem('perez_yt_channel', ytChannelId.trim())
 
       const res = await syncYouTubeVideos(ytApiKey, ytChannelId, products)
@@ -1004,11 +1010,32 @@ export function ProductsAdmin() {
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between rounded-xl bg-piedra-50 border border-piedra-200 px-3.5 py-2.5 text-xs">
                 <span className="text-piedra-600 font-medium">Conexión con YouTube API</span>
-                <span className="inline-flex items-center gap-1.5 font-semibold text-green-700 bg-green-100/70 px-2 py-0.5 rounded-full">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                  Conectada y lista
-                </span>
+                {ytApiKey.trim() ? (
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-green-700 bg-green-100/70 px-2 py-0.5 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
+                    Clave configurada
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
+                    Requiere API Key
+                  </span>
+                )}
               </div>
+
+              <label className="block text-sm">
+                <span className="font-medium text-piedra-700">API Key de YouTube (Google Cloud)</span>
+                <input
+                  type="password"
+                  value={ytApiKey}
+                  onChange={(e) => setYtApiKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="mt-1 w-full rounded-xl border border-piedra-200 px-3 py-2 text-sm outline-none focus:border-red-500 font-mono"
+                />
+                <span className="mt-1 block text-[0.7rem] text-piedra-400">
+                  Clave de la YouTube Data API v3. Se guarda en tu navegador o mediante la variable de entorno VITE_YOUTUBE_API_KEY.
+                </span>
+              </label>
 
               <label className="block text-sm">
                 <span className="font-medium text-piedra-700">ID del Canal o ID de Lista de Reproducción</span>
